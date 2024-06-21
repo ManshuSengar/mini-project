@@ -1,0 +1,92 @@
+import { PropsWithChildren, useCallback, useEffect, useState } from "react";
+import { Formik } from "formik";
+import { skipToken } from "@reduxjs/toolkit/query";
+import React from "react";
+import * as Yup from "yup";
+import { useGetAllPnfQuery } from "../../features/pnf/api";
+
+const EntityForm = <T,>(
+  props: PropsWithChildren<{
+    id: number;
+    status: string;
+    defaultItem: T;
+    useAddItemMutation?: any;
+    useUpdateItemMutation?: any;
+    useGetItemQuery?: any;
+    itemSchema?: Yup.ObjectSchema<{}, Yup.AnyObject, {}, "">;
+    setError?: (error: any) => any;
+    setIsLoading?: (loading: boolean) => any;
+    setItemId?: (id: number) => any;
+  }>
+) => {
+  const [itemId, setItemInternalId] = useState<number>(Number(props.id));
+
+  const setError = useCallback(
+    (error: string) => props.setError && props.setError(error),
+    [props]
+  );
+  const setIsLoading = useCallback(
+    (loading: boolean) => props.setIsLoading && props.setIsLoading(loading),
+    [props]
+  );
+
+  const [addItem, { error: addError }] = (props.useAddItemMutation &&
+    props.useAddItemMutation()) || [null, { isError: false, isLoading: false }];
+  const [updateItem, { error: updateError }] = props.useUpdateItemMutation();
+  const {
+    data: item,
+    isLoading,
+    error: getQueryError,
+  } = props.useGetItemQuery(itemId || skipToken);
+
+
+  useEffect(() => {
+    console.log("EntityF23orm", props.status, { ...props.defaultItem, ...item }, getQueryError)
+  })
+
+  useEffect(() => {
+    if (addError) {
+      setError && setError(addError);
+    }
+  }, [addError, setError]);
+
+  useEffect(() => {
+    console.log("statusUpdate", updateError);
+    if (updateError) setError && setError(updateError);
+  }, [updateError, setError]);
+
+  useEffect(() => {
+    if (getQueryError) setError && setError(getQueryError);
+  }, [getQueryError, setError]);
+
+  // useEffect(() => {
+  //   setIsLoading && setIsLoading(statusAdd.isLoading || statusUpdate.isLoading || isLoading);
+  // }, [statusAdd.isLoading, statusUpdate.isLoading, isLoading, setIsLoading]);
+
+  return !isLoading ? (
+    <Formik
+      initialValues={{ ...props.defaultItem, ...item,status:props.status }}
+      enableReinitialize={true}
+      validationSchema={props.itemSchema}
+      onSubmit={async (values: any, errors: any) => {
+        props.setError && props.setError("");
+        if (!item?.id) {
+          await addItem({ ...values })
+            // .unwrap()
+            .then((data: { id: React.SetStateAction<number> }) => {
+              data.id && setItemInternalId(data.id);
+              data.id && props.setItemId && props.setItemId(Number(data.id));
+            })
+        } else {
+          await updateItem({ ...item, ...values,status:props.status });
+        }
+      }}
+    >
+      <>{props.children}</>
+    </Formik>
+  ) : (
+    <></>
+  );
+};
+
+export default EntityForm;

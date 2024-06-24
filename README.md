@@ -106,8 +106,7 @@ const RiskConcern = () => {
                                                         {appInfo?.riskCode === "02" ? (
                                                             <TableRow>
                                                                 <TableCell>{index}</TableCell>
-                                                                <TableCell>{appInfo.risk}</TableCell>
-                                                                <TableCell>
+                                                                <TableCell>{appInfo.risk}</TableCell>                                                                <TableCell>
                                                                     <Field name="majorWeaknessComment">
                                                                         {({ field, meta }: { field: any; meta: any }) => (
                                                                             <TextField
@@ -283,3 +282,134 @@ const RiskConcern = () => {
     )
 };
 export default RiskConcern;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+------+++++++++++
+
+
+import { styled } from "@mui/material/styles";
+import TextField from "@mui/material/TextField";
+
+const RedditTextArea = styled((props) => (
+  <TextField
+    InputProps={{ disableUnderline: true, inputComponent: "textarea" }}
+    {...props}
+    multiline
+    minRows={3}
+  />
+))(({ theme }) => ({
+  "& .MuiFormLabel-root.MuiInputLabel-root": {
+    color: "#A9A9A9",
+  },
+  "& .MuiFilledInput-root": {
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+    border: "1px solid",
+    borderColor: "#C0C0C0",
+    borderRadius: "0px !important",
+    transition: theme.transitions.create([
+      "border-color",
+      "background-color",
+      "box-shadow",
+    ]),
+    "&:hover": {
+      backgroundColor: "transparent",
+    },
+    "&.MuiInputBase-input": {
+      color: "#3B415B !important",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "transparent",
+      borderColor: "#1377FF",
+    },
+    "&:before": {
+      borderBottom: "none  !important", // Remove bottom border
+    },
+    "&:after": {
+      borderBottom: "none  !important", // Remove bottom border
+    },
+    resize: "both", // Enable manual resizing
+  },
+}));
+
+export default RedditTextArea;
+
++++++++++++66666++++++++
+
+import React, { useRef, useEffect } from "react";
+import { Grid, Typography } from "@mui/material";
+import { useFormikContext, getIn } from "formik";
+import RedditTextArea from "./RedditTextArea";
+import { KeyValuePair } from "./KeyValuePair";
+
+export const TextAreaField = (props: {
+  id?: number;
+  label: string;
+  name: string;
+}) => {
+  const { handleChange, handleBlur, values, touched, errors } =
+    useFormikContext<KeyValuePair>() || {};
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textRef.current) {
+      textRef.current.style.height = "auto";
+      textRef.current.style.height = `${textRef.current.scrollHeight}px`;
+    }
+  }, [values[props.name]]); // Adjust height when value changes
+
+  const onChangeHandler = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    handleChange(event);
+    if (textRef.current) {
+      textRef.current.style.height = "auto";
+      textRef.current.style.height = `${event.target.scrollHeight}px`;
+    }
+  };
+
+  return (
+    <Grid item xs={12}>
+      <Grid item xs={12}>
+        <RedditTextArea
+          label={props.label}
+          className={props.name}
+          onChange={onChangeHandler}
+          onBlur={handleBlur}
+          value={getIn(values, props.name)}
+          name={props.name}
+          inputRef={textRef}
+          size="small"
+        />
+      </Grid>
+      <Grid item xs={12}>
+        <Typography
+          color="error"
+          variant="subtitle2"
+          gutterBottom
+          component="span"
+          className="mybooking_error"
+        >
+          {getIn(touched, props.name) && getIn(errors, props.name) &&
+            JSON.stringify(getIn(errors, props.name)).replaceAll('"', "")}
+        </Typography>
+      </Grid>
+    </Grid>
+  );
+};
+

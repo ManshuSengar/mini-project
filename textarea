@@ -1,0 +1,85 @@
+import Grid from "@mui/material/Grid";
+import { KeyValuePair } from "./KeyValuePair";
+import { getIn, useFormikContext } from "formik";
+import RedditTextField from "./RedditTextField";
+import Typography from "@mui/material/Typography";
+
+export const TextBoxField = (props: {
+  id?: number;
+  label: string;
+  name: string
+}) => {
+  const { handleChange, handleBlur, values, touched, errors } =
+    useFormikContext<KeyValuePair>() || {};
+
+  return (
+    <Grid item xs={12}>
+      <Grid item xs={12}>
+        <RedditTextField
+				  label={props.label}
+				  className={props.name}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          value={getIn(values, props.name)}
+          name={props.name}
+          size="small"
+				/>
+      </Grid>
+      <Grid item xs={12}>
+      <Typography
+          color="error"
+          variant="subtitle2"
+          gutterBottom
+          component="span"
+          className="mybooking_error"
+        >
+          {getIn(touched, props.name) && getIn(errors, props.name) &&
+            JSON.stringify(getIn(errors, props.name)).replaceAll('"', "")}
+        </Typography>
+      </Grid>
+    </Grid>
+  );
+};
+
+import { styled } from "@mui/material/styles";
+import TextField from "@mui/material/TextField";
+
+const RedditTextField = styled((props) => (
+  <TextField InputProps={{ disableUnderline: true }} fullWidth {...props} />
+))(({ theme }) => ({
+  "& .MuiFormLabel-root.MuiInputLabel-root": {
+    color: "#A9A9A9",
+  },
+  "& .MuiFilledInput-root": {
+    overflow: "hidden",
+    maxHeight: "52px",
+    backgroundColor: "#FFFFFF",
+    border: "1px solid",
+    borderColor: "#C0C0C0",
+    borderRadius: "0px !important",
+    transition: theme.transitions.create([
+      "border-color",
+      "background-color",
+      "box-shadow",
+    ]),
+    "&:hover": {
+      backgroundColor: "transparent",
+    },
+    "&.MuiInputBase-input": {
+      color: "#3B415B !important",
+    },
+    "&.Mui-focused": {
+      backgroundColor: "transparent",
+      borderColor: "#1377FF",
+    },
+    "&:before": {
+      borderBottom: "none  !important", // Remove bottom border
+    },
+    "&:after": {
+      borderBottom: "none  !important", // Remove bottom border
+    },
+  },
+}));
+
+export default RedditTextField;
+

@@ -1,0 +1,331 @@
+import React, { useState, useEffect } from 'react';
+import { Formik, Form, Field } from 'formik';
+import * as Yup from 'yup';
+import axios from 'axios';
+import {
+  TextField,
+  Checkbox,
+  FormControlLabel,
+  Button,
+  Grid,
+  Typography,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+} from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import EditIcon from '@mui/icons-material/Edit';
+
+const validationSchema = Yup.object().shape({
+  username: Yup.string().required('Username is required'),
+  email: Yup.string().email('Invalid email').required('Email is required'),
+  mobileNo: Yup.string()
+    .matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits')
+    .required('Mobile number is required'),
+  address: Yup.string().required('Address is required'),
+  city: Yup.string().required('City is required'),
+  district: Yup.string().required('District is required'),
+  state: Yup.string().required('State is required'),
+  pincode: Yup.string()
+    .matches(/^[0-9]{6}$/, 'Pincode must be 6 digits')
+    .required('Pincode is required'),
+  nbfcName: Yup.string().required('NBFC Name is required'),
+  portalRoles: Yup.array().min(1, 'At least one portal role must be selected'),
+});
+
+const initialValues = {
+  username: '',
+  email: '',
+  mobileNo: '',
+  address: '',
+  city: '',
+  district: '',
+  state: '',
+  pincode: '',
+  nbfcName: '',
+  portalRoles: [],
+};
+
+const UserForm = () => {
+  const [users, setUsers] = useState([]);
+  const [nbfcs, setNbfcs] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetchUsers();
+    fetchNbfcs();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get('your-api-endpoint/users');
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchNbfcs = async () => {
+    try {
+      const response = await axios.get('your-api-endpoint/nbfcs');
+      setNbfcs(response.data);
+    } catch (error) {
+      console.error('Error fetching NBFCs:', error);
+    }
+  };
+
+  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
+    setSubmitting(false);
+    try {
+      if (editingUser) {
+        await axios.put(`your-api-endpoint/users/${editingUser.id}`, values);
+      } else {
+        await axios.post('your-api-endpoint/users', values);
+      }
+      fetchUsers();
+      resetForm();
+      setOpenDialog(false);
+      setEditingUser(null);
+    } catch (error) {
+      console.error('Error saving user:', error);
+    }
+  };
+
+  const handleEdit = (user) => {
+    setEditingUser(user);
+    setOpenDialog(true);
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.nbfcName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const columns = [
+    { field: 'username', headerName: 'Username', flex: 1 },
+    { field: 'nbfcName', headerName: 'NBFC Name', flex: 1 },
+    { field: 'address', headerName: 'Address', flex: 1 },
+    { field: 'portalRoles', headerName: 'Portal Roles', flex: 1, 
+      valueGetter: (params) => params.row.portalRoles.join(', ') },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      flex: 1,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          startIcon={<EditIcon />}
+          onClick={() => handleEdit(params.row)}
+        >
+          Edit
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+        <Button variant="contained" color="primary" onClick={() => setOpenDialog(true)}>
+          Add User
+        </Button>
+        <TextField
+          label="Search by Username or NBFC Name"
+          variant="outlined"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </Box>
+
+      <Box height={400}>
+        <DataGrid
+          rows={filteredUsers}
+          columns={columns}
+          pageSize={5}
+          rowsPerPageOptions={[5]}
+        />
+      </Box>
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>{editingUser ? 'Edit User' : 'Add User'}</DialogTitle>
+        <DialogContent>
+          <Formik
+            initialValues={editingUser || initialValues}
+            validationSchema={validationSchema}
+            onSubmit={handleSubmit}
+          >
+            {({ errors, touched, values, handleChange, setFieldValue }) => (
+              <Form>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="username"
+                      label="Username"
+                      error={touched.username && errors.username}
+                      helperText={touched.username && errors.username}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="email"
+                      label="Email"
+                      error={touched.email && errors.email}
+                      helperText={touched.email && errors.email}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="mobileNo"
+                      label="Mobile Number"
+                      error={touched.mobileNo && errors.mobileNo}
+                      helperText={touched.mobileNo && errors.mobileNo}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth error={touched.nbfcName && errors.nbfcName}>
+                      <InputLabel id="nbfc-select-label">NBFC Name</InputLabel>
+                      <Select
+                        labelId="nbfc-select-label"
+                        id="nbfc-select"
+                        value={values.nbfcName}
+                        label="NBFC Name"
+                        onChange={(e) => setFieldValue('nbfcName', e.target.value)}
+                      >
+                        {nbfcs.map((nbfc) => (
+                          <MenuItem key={nbfc.id} value={nbfc.name}>
+                            {nbfc.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {touched.nbfcName && errors.nbfcName && (
+                        <Typography color="error">{errors.nbfcName}</Typography>
+                      )}
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="h6">Address</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="address"
+                      label="Address"
+                      error={touched.address && errors.address}
+                      helperText={touched.address && errors.address}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="city"
+                      label="City"
+                      error={touched.city && errors.city}
+                      helperText={touched.city && errors.city}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="district"
+                      label="District"
+                      error={touched.district && errors.district}
+                      helperText={touched.district && errors.district}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="state"
+                      label="State"
+                      error={touched.state && errors.state}
+                      helperText={touched.state && errors.state}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="pincode"
+                      label="Pincode"
+                      error={touched.pincode && errors.pincode}
+                      helperText={touched.pincode && errors.pincode}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="h6">Portal Roles</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={values.portalRoles.includes('Refinance')}
+                          onChange={handleChange}
+                          name="portalRoles"
+                          value="Refinance"
+                        />
+                      }
+                      label="Refinance"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={values.portalRoles.includes('CDA')}
+                          onChange={handleChange}
+                          name="portalRoles"
+                          value="CDA"
+                        />
+                      }
+                      label="CDA"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={values.portalRoles.includes('Colending')}
+                          onChange={handleChange}
+                          name="portalRoles"
+                          value="Colending"
+                        />
+                      }
+                      label="Colending"
+                    />
+                    {touched.portalRoles && errors.portalRoles && (
+                      <Typography color="error">{errors.portalRoles}</Typography>
+                    )}
+                  </Grid>
+                </Grid>
+                <DialogActions>
+                  <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+                  <Button type="submit" variant="contained" color="primary">
+                    {editingUser ? 'Update' : 'Submit'}
+                  </Button>
+                </DialogActions>
+              </Form>
+            )}
+          </Formik>
+        </DialogContent>
+      </Dialog>
+    </Box>
+  );
+};
+
+export default UserForm;

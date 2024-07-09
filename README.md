@@ -1,1008 +1,480 @@
-import * as React from "react";
-import axios from "axios";
-import { useEffect, useState } from "react";
-import base_url from "../service/microapi";
-import Card from "@mui/material/Card";
-import { TextField } from "@mui/material";
-import CardContent from "@mui/material/CardContent";
-import Button from "@mui/material/Button";
-import { DataGrid } from "@mui/x-data-grid";
-import { Grid, Typography, Select, MenuItem } from "@mui/material";
-import { Link } from "react-router-dom";
-import Chip from "@mui/material/Chip";
-import Tooltip from "@mui/material/Tooltip";
-import CdaSnackbar from "../Modal/CdaSnackbar";
-import Skeleton from "@mui/material/Skeleton";
-import DeleteModel from "../Modal/DeleteModal";
-import ViewReportModel from "../Modal/ViewReportModel";
-import InputLabel from "@mui/material/InputLabel";
-import FormControl from "@mui/material/FormControl";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import Sidebar from "../Modal/Sidebar";
+import React, { useState, useEffect } from 'react';
+import { Formik, Form, Field } from 'formik';
+import * as Yup from 'yup';
+import { editUser, addUser, getUsersById, deleteUser } from '../../../features/common/commonApi';
+import {
+  TextField,
+  Checkbox,
+  FormControlLabel,
+  Button,
+  Grid,
+  Typography,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  Card,
+  Link,
+  Tooltip,
+  Divider,
+  Radio,
+  RadioGroup
+} from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { getUsersLists, getFetchNBFCPartners } from 'features/common/commonApi';
+import { toast } from 'react-toastify';
 
+const validationSchema = Yup.object().shape({
+  userName: Yup.string().required('Username is required'),
+  email: Yup.string().email('Invalid email').required('Email is required'),
+  mobileNo: Yup.string()
+    .matches(/^[0-9]{10}$/, 'Mobile number must be 10 digits')
+    .required('Mobile number is required'),
+  address: Yup.string().required('Address is required'),
+  city: Yup.string().required('City is required'),
+  regType: Yup.string().required('User Type is required'),
+  district: Yup.string().required('District is required'),
+  state: Yup.string().required('State is required'),
+  pincode: Yup.string()
+    .matches(/^[0-9]{6}$/, 'Pincode must be 6 digits')
+    .required('Pincode is required'),
+  nbfcName: Yup.string().required('NBFC Name is required'),
+  portalRoles: Yup.array().min(1, 'At least one portal role must be selected')
+});
 
-function Dashboard({ userId, handleSetCustomerId }) {
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteId, setDeleteId] = useState();
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [isServerDown, setServerDown] = useState(false);
-  const [reportData, setReportData] = useState();
-  const [tableTitle, setTableTitle] = useState("Total Application");
-  const [partners, setPartners] = useState([]);
-  const [openDrawer, setDrawerOpen] = React.useState(false);
-  const [appData, setData] = React.useState({});
+const initialValues = {
+  userName: '',
+  email: '',
+  mobileNo: '',
+  address: '',
+  city: '',
+  district: '',
+  state: '',
+  pincode: '',
+  nbfcName: '',
+  portalRoles: [],
+  regType: ''
+};
 
-  // search table
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
-  const [searchText, setSearchText] = useState("");
-  const [states, setStates] = useState([]);
-  const [selectedStates, setSelectedStates] = useState("");
-  const [selectPartner, setSelectPartner] = useState("");
+const UserForm = () => {
+  const [users, setUsers] = useState([]);
+  const [nbfcs, setNbfcs] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const getNbfcName = async () => {
+    try {
+      const response = await getFetchNBFCPartners();
+      setNbfcs(response?.data);
+    } catch (err) {
+      toast.error('something went wrong. while fetching Nbfc');
+    }
+  };
+
+  const getUsersList = async () => {
+    try {
+      const response = await getUsersLists();
+      setUsers(response?.data);
+    } catch (err) {
+      toast.error('something went wrong.');
+    }
+  };
 
   useEffect(() => {
-    getStateMaster();
-    getPartnerMaster();
+    getUsersList();
+    getNbfcName();
   }, []);
 
-  const getStateMaster = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getStateMaster`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setStates(res.data.result);
+  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
+    setSubmitting(false);
+    try {
+      const updatedValues = {
+        userMobileNo: values.mobileNo,
+        nbfcChannelPartnerCode: values.nbfcName,
+        regType: values.regType,
+        emailId: values.email,
+        userName: values.userName,
+        roles: values?.portalRoles?.join(','),
+        addressDto: {
+          address: values.address,
+          city: values.city,
+          district: values.district,
+          addState: values.state,
+          pinCode: values.pincode
         }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
+      };
+
+      if (editingUser) {
+        await editUser({ ...updatedValues, userId: values.userId });
+        toast.success('User updated successfully.');
+      } else {
+        await addUser({ ...updatedValues, userType: 'NBFC' });
+        toast.success('User added successfully.');
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      getUsersList();
+      resetForm();
+      setOpenDialog(false);
+      setEditingUser(null);
+    } catch (error) {
+      toast.error('something went wrong.');
+    }
   };
 
-  const getPartnerMaster = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getPlatMastr`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setPartners(res.data.result);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
+  const handleEdit = async (userDetail) => {
+    try {
+      const result = await getUsersById(userDetail.userId);
+      if (result.statusCode == 200) {
+        const user = result.data;
+        console.log('enter');
+        const userData = {
+          userId: user?.userId,
+          userType: user?.userType,
+          mobileNo: user.userMobileNo,
+          nbfcName: user.nbfcChannelPartnerCode,
+          regType: user.regType,
+          email: user.emailId,
+          userName: user.userName,
+          address: user?.addressDto?.address,
+          city: user?.addressDto?.city,
+          district: user?.addressDto?.district,
+          state: user?.addressDto?.addState,
+          pincode: user?.addressDto?.pinCode,
+          addressTypeId: user?.addressDto?.addressTypeId,
+          addressType: user?.addressDto?.addressType,
+          portalRoles: user?.roles?.split(',') || []
+        };
+
+        setEditingUser(userData);
+        setOpenDialog(true);
+      } else {
+        toast.error('something went wrong.');
+      }
+    } catch (err) {
+      toast.error('something went wrong.');
+    }
   };
 
-  const commonGridColumns = [
+  const handleDelete = async (userDetail) => {
+    try {
+      const result = await deleteUser(userDetail.userId);
+      if (result.statusCode == 200) {
+        toast.success('User delete successfully. ');
+        getUsersList();
+      } else {
+        toast.error('something went wrong.');
+      }
+    } catch (err) {
+      toast.error('something went wrong.');
+    }
+  };
+
+  const filteredUsers =
+    users &&
+    users?.filter(
+      (user) =>
+        user?.userName?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+        user?.nbfcChannelPartnerCode?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+        user?.emailId?.toLowerCase().includes(searchTerm?.toLowerCase())
+    );
+
+  const columns = [
+    { field: 'userName', headerName: 'User Name', width: 130 },
+    { field: 'nbfcPartnerName', headerName: 'NBFC Name', width: 250 },
+    { field: 'emailId', headerName: 'Email Id', width: 180 },
+    { field: 'userMobileNo', headerName: 'Mobile No', width: 150 },
     {
-      field: "id",
-      headerName: "S N",
-      width: 40,
-      renderCell: (params) => {
-        return <Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.id}</Link>;
-      },
+      field: 'roles',
+      headerName: 'Portal Roles',
+      width: 250
+      //   valueGetter: (params) => params.row?.portalRoles?.join(', ')
     },
     {
-      field: "borw",
-      headerName: "Borrower Name",
-      width: 100,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.borw}>
-          <Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.borw}</Link>
-          </Tooltip>;
-      },
-    },
-    {
-      field: "loanReqid",
-      headerName: "Loan Request",
-      width: 150,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.loanReqid}>
-          <Link className="in-clickable" onClick={() => copyClipboard(params.row.loanReqid)}>{params.row.loanReqid}</Link>
-          </Tooltip>;
-      },
-    },
-    {
-      field: "inwardNo",
-      headerName: "Inward No.",
-      width: 100,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.inwardNo}><Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.inwardNo}</Link>
-      </Tooltip>;
-      },
-    },
-    {
-      field: "state",
-      headerName: "State",
-      width: 100,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.state}><Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.state}</Link>
-        </Tooltip>;
-      },
-    },
-    {
-      field: "asstntAmount",
-      headerName: "Applied Amount",
-      width: 80,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.asstntAmount}><Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.asstntAmount}</Link>
-        </Tooltip>;
-      },
-    },
-    // {
-    //   field: "pan",
-    //   headerName: "Pan",
-    //   width: 100,
-    //   sortable: false,
-    //   editable: false,
-    //   renderCell: (params) => {
-    //     return <Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.pan}</Link>;
-    //   },
-    // },
-    {
-      field: "karmaPartner",
-      headerName: "Partner",
-      width: 60,
-      sortable: false,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.karmaPartner}><Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.karmaPartner}</Link>
-        </Tooltip>;
-      },
-    },
-    {
-      field: "iDate",
-      headerName: "Inward Date",
-      width: 100,
-      sortable: false,
-      editable: false,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.idate}>
-          <Link className="in-clickable" onClick={() => handleApplicationDetails(params, true)}>{params.row.idate}</Link>
-          </Tooltip>;
-      },
-    },
-    {
-      field: "asstSought",
-      headerName: "Sanction Amount",
-      sortable: true,
-      width: 100,
-      renderCell: (params) => {
-        return <Tooltip title={params.row.asstSought}>
-          <Link onClick={() => handleApplicationDetails(params, true)} className="in-clickable">{params.row.asstSought}</Link>
-          </Tooltip>;
-      },
-    },
-    {
-      field: "applStatus",
-      headerName: "Status",
-      width: 170,
-      sortable: true,
-      renderCell: (params) => {
-        return (
-          <Link onClick={() => handleApplicationDetails(params, true)}>
-            <Tooltip title={params.row.labelStatus}>
-            <Chip
-              label={params.row.labelStatus}
-              size="small"
-              className="table-chip"
-              color={
-                params.row.applStatus === "DISBURSED"
-                  ? "success"
-                  : params.row.applStatus === "DFS_APPL_CREATED" ||
-                    params.row.applStatus === "BRE_SUCCESS" ||
-                    params.row.applStatus === "SANCTIONED" ||
-                    params.row.applStatus === "LOAN_ACCT_CREATED"
-                    ? "warning"
-                    : params.row.applStatus === "SANCTION_FAILED" ||
-                      params.row.applStatus === "BRE_FAILED" ||
-                      params.row.applStatus === "ESIGN_NOT_AFFIXED" ||
-                      params.row.applStatus === "KYC_VERIFICATION_FAILED"
-                      ? "error"
-                      : "primary"
-              }
-              variant="outlined"
-            />
-            </Tooltip>
-          </Link>
-        );
-      },
-    },
+      field: 'actions',
+      headerName: 'Actions',
+      width: 120,
+      renderCell: (params) => (
+        <>
+          <Tooltip title="Edit">
+            <Link onClick={() => handleEdit(params.row)} sx={{ marginRight: 2 }}>
+              <EditIcon className="colorRed icon-size" />
+            </Link>
+          </Tooltip>
+          <Tooltip title="Delete">
+            <Link onClick={() => handleDelete(params.row)}>
+              <DeleteIcon className="colorRed icon-size" style={{ color: 'red' }}/>
+            </Link>
+          </Tooltip>
+        </>
+      )
+    }
   ];
 
-  // rejected
-  const [rejectedColumns, setRejectedColumns] = useState([]);
-  const [rejectModal, setRejectModal] = React.useState(false);
-  const rejectModalOpen = () => setRejectModal(true);
-  const rejectModalClose = () => setRejectModal(false);
-  const [rejectedApplicationCount, setRejectedApplicationCount] = useState("0");
-  // rejected end
-
-  // pending
-  const [pendingColumns, setPendingColumns] = useState([]);
-  const [pendingModal, setPendingModal] = React.useState(false);
-  const pendingModalOpen = () => setPendingModal(true);
-  const pendingModalClose = () => setPendingModal(false);
-  const [pendingApplicationCount, setPendingApplicationCount] = useState("0");
-  // pending end
-
-  //
-  // total
-  const [totalAppColumns, setTotalAppColumns] = useState([]);
-  const [totalAppModal, setTotalAppModal] = React.useState(false);
-  const totalAppModalOpen = () => setTotalAppModal(true);
-  const totalAppModalClose = () => setTotalAppModal(false);
-  const [totalAppApplicationCount, setTotalApplicationCount] = useState("0");
-  // total end
-
-  // completed
-  const [completedColumns, setCompletedColumns] = useState([]);
-  const [completedApplicationCount, setCompletedApplicationCount] =
-    useState("0");
-  const [openComplete, setCompleteOpen] = useState(false);
-  const completeModalOpen = () => setCompleteOpen(true);
-  const completeModalClose = () => setCompleteOpen(false);
-
-  // completed end
-
-  const [openSnacknar, setOpenSnacknar] = useState(false);
-  const [snackMsg, setSnackMsg] = useState("");
-  const [severity, setSeverity] = useState("success");
-  const [loading, setloading] = useState(false);
-  const handleSnackClose = () => {
-    setOpenSnacknar(false);
-  };
-
-  // const [showTable, setTable] = useState(false);
-
-  const handleTable = (code) => {
-    switch (code) {
-      case "01":
-        getTotalApplication("Total Application");
-        break;
-      case "02":
-        getApplicationData(code, "Under Process Application");
-        break;
-      case "03":
-        getApplicationData(code, "Rejected Application");
-        break;
-      case "04":
-        getApplicationData(code, "Completed Application");
-        break;
-      default:
-      // code block
-    }
-  };
-
-  const getTotalApplicationCount = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getTotalApplication`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setTotalApplicationCount(res.data.result);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  const getUnderProcessCount = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getPendingAppl`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setPendingApplicationCount(res.data.result);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  const getCompleteApplicationCount = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getSubmittedAppl`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setCompletedApplicationCount(res.data.result);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  const getRejectedApplicationCount = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getErrorAppl`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setRejectedApplicationCount(res.data.result);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  const getTotalApplication = (title, index) => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getListOfAppl`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          const columnName = Object.keys(res.data.result);
-          let getColumn = columnName.map((key, index) => {
-            const column = res.data.result[key];
-            return {
-              id: +key + +1,
-              loanReqid: column.loanReqid,
-              inwardNo: column.inwardNo,
-              state: column.state,
-              asstntAmount: column.asstntAmount,
-              pan: column.pan,
-              idate: column.idate,
-              asstSought: column.asstSought,
-              acknow: column.acknow,
-              borw: column.borw,
-              karmaPartner: column.karmaPartner,
-              applStatus: column.applStatus,
-              labelStatus : column?.applStatus?.replace( /_/g, " " )
-            };
-          });
-          setTableTitle(title);
-          setTotalAppColumns(getColumn);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  const filteredRows = totalAppColumns.filter((row) => {
-    const dateVisible =
-      (!startDate || new Date(row.idate) >= new Date(startDate)) &&
-      (!endDate || new Date(row.idate) <= new Date(endDate));
-    const stateVisible =
-      selectedStates.length === 0 || selectedStates.includes(row.state);
-    const partnerVisible =
-      selectPartner.length === 0 || selectPartner.includes(row.karmaPartner);
-    const loanReqVisible =
-      typeof row.loanReqid === "string"
-        ? row.loanReqid.toLowerCase().includes(searchText.toLowerCase())
-        : false;
-
-    const panVisible =
-      typeof row.pan === "string"
-        ? row.pan.toLowerCase().includes(searchText.toLowerCase())
-        : false;
-
-    const nameVisible =
-      typeof row.borw === "string"
-        ? row.borw.toLowerCase().includes(searchText.toLowerCase())
-        : false;
-
-    return (
-      dateVisible &&
-      stateVisible &&
-      partnerVisible &&
-      (loanReqVisible || panVisible || nameVisible)
-    );
-  });
-
-  ///-->  Rejected-->
-  const getApplicationData = (code, title) => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getListOfApplStatusWise?status=${code}`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          const columnName = Object.keys(res.data.result);
-          let getColumn = columnName.map((key, index) => {
-            const column = res.data.result[key];
-            return {
-              id: +key + +1,
-              loanReqid: column.loanReqid,
-              inwardNo: column.inwardNo,
-              // loanAcctNo: column.loanAcctNo,
-              state: column.state,
-              idate: column.idate,
-              asstntAmount: column.asstntAmount,
-              pan: column.pan,
-              asstSought: column.asstSought,  
-              acknow: column.acknow,
-              applStatus: column.applStatus,
-              labelStatus : column?.applStatus?.replace( /_/g, " " ),
-              borw: column.borw,
-              karmaPartner: column.karmaPartner,
-            };
-          });
-          console.log("getColumn123", getColumn);
-          setTableTitle(title);
-          setTotalAppColumns(getColumn);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  // completed
-  const getCompletedApplication = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getListOfApplStatusWise?status=04`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setCompletedApplicationCount(res.data.result.length);
-          const columnName = Object.keys(res.data.result);
-          console.log("columnName12", columnName);
-          let getColumn = columnName.map((key) => {
-            const column = res.data.result[key];
-            return {
-              id: +key + +1,
-              loanReqid: column.loanReqid,
-              inwardNo: column.inwardNo,
-              loanAcctNo: column.loanAcctNo,
-              asstntAmount: column.asstntAmount,
-              pan: column.pan,
-              acknow: column.acknow,
-              applStatus: column.applStatus,
-            };
-          });
-          console.log("getColumn123", getColumn);
-          setTotalAppColumns(getColumn);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  // pending
-
-  const getPendingApplication = () => {
-    setloading(true);
-    axios
-      .get(`${base_url}/dash/getListOfApplStatusWise?status=02`)
-      .then((res) => {
-        if (res.data.status === 200 && res.data.result !== null) {
-          setPendingApplicationCount(res.data.result.length);
-          const columnName = Object.keys(res.data.result);
-          console.log("columnName12", columnName);
-          let getColumn = columnName.map((key) => {
-            const column = res.data.result[key];
-            return {
-              id: +key + +1,
-              loanReqid: column.loanReqid,
-              inwardNo: column.inwardNo,
-              loanAcctNo: column.loanAcctNo,
-              asstntAmount: column.asstntAmount,
-              pan: column.pan,
-              acknow: column.acknow,
-              applStatus: column.applStatus,
-            };
-          });
-          console.log("getColumn123", getColumn);
-          setTotalAppColumns(getColumn);
-        }
-        setloading(false);
-      })
-      .catch((err) => {
-        if (err.response === undefined) {
-          setServerDown(true);
-          setOpenSnacknar(true);
-          setSnackMsg("Server is Down. Contact to support. !");
-          setSeverity("error");
-        } else {
-          setloading(false);
-        }
-      });
-  };
-
-  useEffect(() => {
-    getTotalApplication("Total Application");
-    getTotalApplicationCount();
-    getUnderProcessCount();
-    getRejectedApplicationCount();
-    getCompleteApplicationCount();
-  }, []);
-
-  const handleShowDeleteModal = (id) => {
-    setShowDeleteModal(true);
-    setDeleteId(id);
-  };
-
-  const handleDeleteClose = (status, reason, id) => {
-    if (reason !== "backdropClick") {
-      setShowDeleteModal(false);
-    }
-    if (status) {
-      handleNewAppDelete(id);
-    }
-  };
-
-  const handleNewAppDelete = (cdaAppId) => {
-    setloading(true);
-    axios
-      .delete(`${base_url}/deleteNewApplication?cdaAppId=` + cdaAppId)
-      .then((res) => {
-        if (res.data.status === 200) {
-          setOpenSnacknar(true);
-          setSnackMsg("Record has been deleted !");
-          setSeverity("success");
-          // getNewApplication();
-          setloading(false);
-        }
-      })
-      .catch((err) => {
-        setOpenSnacknar(true);
-        setSnackMsg("Something went wrong !");
-        setSeverity("error");
-        setloading(false);
-      });
-  };
-
-  const handleModelViewClose = (status) => {
-    setShowViewModal(false);
-  };
-
-  const handleReset = () => {
-    setEndDate(null);
-    setStartDate(null);
-    setSearchText("");
-    setSelectedStates("");
-    setSelectPartner("");
-  };
-
-  const handleApplicationDetails = (data, newOpen) => {
-    setData(data);
-    setDrawerOpen(newOpen);
-  }
-
-  const copyClipboard = (loanId) =>{
-    navigator.clipboard.writeText(loanId);
-    setOpenSnacknar(true);
-    setSnackMsg("Copy LoanId : " + loanId);
-    setSeverity("success");
-  }
-
   return (
-    <>
-      <Grid container spacing={2}>
-        <Grid className="py-0 pb-2" item xs={8}>
-          <Typography noWrap variant="subtitle1" component="div">
-            Dashboard
-          </Typography>
-        </Grid>
-        <Grid
-          className="py-0 pb-2"
-          item
-          xs={4}
-          display="flex"
-          justifyContent="end"
-        ></Grid>
-      </Grid>
-      <Grid container rowSpacing={4.5} columnSpacing={2.75}>
-        <Grid item xs={12} sm={6} md={3} lg={3}>
-          <Card
-            onClick={() => handleTable("01")}
-            className={
-              tableTitle === "Total Application"
-                ? "customize-card total_application opend-box show-box"
-                : "customize-card total_application opend-box"
-            }
-            sx={{ maxWidth: 345 }}
+    <Box className="wrap-admin-table">
+      <Card className="wrap-top-head">
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <div className="custome-form wrap-text">
+            <TextField
+              label="Search by Username or NBFC Name"
+              variant="outlined"
+              value={searchTerm}
+              size="small"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              fullWidth
+            />
+          </div>
+          <Button
+            variant="contained"
+            size="small"
+            className="add-button"
+            onClick={() => {
+              setOpenDialog(true);
+              setEditingUser('');
+            }}
           >
-            {loading ? (
-              <Skeleton animation="wave" variant="rectangular" height={80} />
-            ) : (
-              <>
-                {" "}
-                <CardContent className="pb-3">
-                  <Typography
-                    gutterBottom
-                    variant="h5"
-                    component="div"
-                    className="wrap-header-title"
-                  >
-                    Total Application
-                  </Typography>
-                  <Typography variant="body2" className="wrap-subtitle">
-                    {totalAppApplicationCount}
-                  </Typography>
-                </CardContent>
-                {/* <CardActions>
-                  <Button
-                    disabled={totalAppApplicationCount <= 0}
-                    className="text-capital px-2"
-                    onClick={() => handleTable("01")}
-                    size="small"
-                  >
-                    See More
-                  </Button>
-                </CardActions> */}
-              </>
-            )}
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} lg={3}>
-          <Card
-            onClick={() => handleTable("04")}
-            className={
-              tableTitle === "Completed Application"
-                ? "customize-card completed opend-box show-box"
-                : "customize-card completed opend-box"
-            }
-            sx={{ maxWidth: 345 }}
-          >
-            {loading ? (
-              <Skeleton animation="wave" variant="rectangular" height={80} />
-            ) : (
-              <>
-                <CardContent className="pb-3">
-                  <Typography
-                    gutterBottom
-                    variant="h5"
-                    component="div"
-                    className="wrap-header-title"
-                  >
-                    Completed Application
-                  </Typography>
-                  <Typography variant="body2" className="wrap-subtitle">
-                    {completedApplicationCount}
-                  </Typography>
-                </CardContent>
-                {/* <CardActions>
-                  <Button
-                    disabled={completedApplicationCount <= 0}
-                    className="text-capital px-2"
-                    
-                    size="small"
-                  >
-                    See More
-                  </Button>
-                </CardActions> */}
-              </>
-            )}
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} lg={3}>
-          <Card
-            onClick={() => handleTable("02")}
-            className={
-              tableTitle === "Under Process Application"
-                ? "customize-card Under-Process opend-box show-box"
-                : "customize-card Under-Process opend-box"
-            }
-            sx={{ maxWidth: 345 }}
-          >
-            {loading ? (
-              <Skeleton animation="wave" variant="rectangular" height={80} />
-            ) : (
-              <>
-                <CardContent className="pb-3">
-                  <Typography
-                    gutterBottom
-                    variant="h5"
-                    component="div"
-                    className="wrap-header-title"
-                  >
-                    Under Process Application
-                  </Typography>
-                  <Typography variant="body2" className="wrap-subtitle">
-                    {pendingApplicationCount}
-                  </Typography>
-                </CardContent>
-                {/* <CardActions>
-                  <Button
-                    disabled={pendingApplicationCount <= 0}
-                    className="text-capital px-2"
-                    size="small"
-                  >
-                    See More
-                  </Button>
-                </CardActions> */}
-              </>
-            )}
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3} lg={3}>
-          <Card
-            onClick={() => handleTable("03")}
-            className={
-              tableTitle === "Rejected Application"
-                ? "customize-card rejected opend-box show-box"
-                : "customize-card rejected opend-box"
-            }
-            sx={{ maxWidth: 345 }}
-          >
-            {loading ? (
-              <Skeleton animation="wave" variant="rectangular" height={80} />
-            ) : (
-              <>
-                <CardContent className="pb-3">
-                  <Typography
-                    gutterBottom
-                    variant="h5"
-                    component="div"
-                    className="wrap-header-title"
-                  >
-                    Rejected Application
-                  </Typography>
-                  <Typography variant="body2" className="wrap-subtitle">
-                    {rejectedApplicationCount}
-                  </Typography>
-                </CardContent>
-                {/* <CardActions>
-                  <Button
-                    disabled={rejectedApplicationCount <= 0}
-                    className="text-capital px-2"
-                   
-                    size="small"
-                  >
-                    See More
-                  </Button>
-                </CardActions> */}
-              </>
-            )}
-          </Card>
-        </Grid>
-      </Grid>
-
-      <Grid container spacing={2} className="my-3">
-        <Grid className="py-0 pb-2" item xs={8}>
-          <Typography noWrap variant="subtitle1" component="div">
-            {tableTitle}
-          </Typography>
-        </Grid>
-      </Grid>
-
-      <Card className="customize-card px-3 py-4 my-2">
-        {loading ? (
-          <Skeleton animation="wave" variant="rectangular" height={300} />
-        ) : (
-          <>
-            <div
-              className="custome-form"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "16px",
-                "& > *": {
-                  marginRight: "16px",
-                },
-              }}
-            >
-              <DatePicker
-                label="Start Date"
-                value={startDate}
-                onChange={(newValue) => setStartDate(newValue)}
-                renderInput={(params) => <TextField {...params} />}
-                inputFormat="DD/MM/YYYY"
-                mask="__/__/____"
-                className="wrap-custome-picker"
-                sx={{ marginRight: "10px" }}
-              />
-              <DatePicker
-                label="End Date"
-                value={endDate}
-                onChange={(newValue) => setEndDate(newValue)}
-                renderInput={(params) => <TextField {...params} />}
-                inputFormat="DD/MM/YYYY"
-                mask="__/__/____"
-                className="wrap-custome-picker"
-                sx={{ marginRight: "10px" }}
-              />
-              {/* <TextField
-                label="Start Date"
-                type="date"
-                value={startDate}
-                size="small"
-                onChange={(e) => setStartDate(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                sx={{ height: "40px", width: "250px", margin: "10px" }}
-              />
-              <TextField
-                label="End Date"
-                type="date"
-                size="small"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                sx={{ height: "40px", width: "250px", margin: "10px" }}
-              /> */}
-              <FormControl sx={{ width: "230px" }}>
-                <InputLabel className="select-label" id="state1">
-                  State
-                </InputLabel>
-                <Select
-                  labelId="state1"
-                  value={selectedStates}
-                  placeholder="State"
-                  label="State"
-                  onChange={(e) => setSelectedStates(e.target.value)}
-                  size="small"
-                  sx={{ marginRight: "10px" }}
-                // renderValue={(selected) => selected.join(", ")}
-                >
-                  {/* <MenuItem key="" value="">
-                  {" "}
-                  Select State
-                </MenuItem> */}
-                  {states.map((state) => (
-                    <MenuItem key={state.stateCode} value={state.stateName}>
-                      {state.stateName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <FormControl sx={{ width: "230px" }}>
-                <InputLabel className="select-label" id="partner">
-                  Partner
-                </InputLabel>
-                <Select
-                  labelId="partner"
-                  value={selectPartner}
-                  placeholder="Partner"
-                  label="Partner"
-                  onChange={(e) => setSelectPartner(e.target.value)}
-                  size="small"
-                  sx={{ marginRight: "10px" }}
-                >
-                  {partners.map((partner) => (
-                    <MenuItem
-                      key={partner.partnerCode}
-                      value={partner.partnerName}
-                    >
-                      {partner.partnerName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <TextField
-                label="Search"
-                value={searchText}
-                size="small"
-                onChange={(e) => setSearchText(e.target.value)}
-                sx={{ height: "40px", marginRight: "10px" }}
-              />
-              <Button
-                variant="contained"
-                size="small"
-                className="text-capital inner-link-btn btn-with-icon"
-                onClick={handleReset}
-              >
-                Reset
-              </Button>
-            </div>
-            <div style={{ width: "100%" }}>
-              <DataGrid
-                className="custom-grid-table not-show-header-option on-row-selection"
-                rows={filteredRows}
-                columns={commonGridColumns}
-                initialState={{
-                  pagination: {
-                    paginationModel: { page: 0, pageSize: 10 },
-                  },
-                }}
-                pageSizeOptions={[10, 20]}
-              />
-            </div>
-          </>
-        )}
+            Add User
+          </Button>
+        </Box>
+      </Card>
+      <Card className="wrap-table-body">
+        <Box height={400}>
+          <DataGrid
+            rows={filteredUsers}
+            className="custom-grid-table not-show-header-option on-row-selection"
+            columns={columns}
+            pageSize={5}
+            rowsPerPageOptions={[5]}
+            getRowId={(row) => row.userName + row.emailId}
+          />
+        </Box>
       </Card>
 
-      <DeleteModel
-        show={showDeleteModal}
-        handleDeleteClose={handleDeleteClose}
-        deleteId={deleteId}
-      />
-      <CdaSnackbar
-        open={openSnacknar}
-        msg={snackMsg}
-        severity={severity}
-        handleSnackClose={handleSnackClose}
-      />
-      <ViewReportModel
-        show={showViewModal}
-        reportData={reportData}
-        handleModelViewClose={handleModelViewClose}
-      />
-      {openDrawer ? 
-       <Sidebar openDrawer={openDrawer} getdata={appData} handleCloseSidebar={handleApplicationDetails} />
-       : ''}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>{editingUser ? 'Edit User' : 'Add User'}</DialogTitle>
+        <Formik
+          validationSchema={validationSchema}
+          enableReinitialize={true}
+          initialValues={editingUser || initialValues}
+          onSubmit={handleSubmit}
+        >
+          {({ errors, touched, values, handleChange }) => (
+            <>
+              <DialogContent>
+                <Form className="custome-form mt-13">
+                  <Grid container spacing={2}>
+                    <Grid item xs={12}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="userName"
+                        label="Username"
+                        size="small"
+                        error={touched.username && errors.username}
+                        helperText={touched.username && errors.username}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="email"
+                        label="Email"
+                        size="small"
+                        error={touched.email && errors.email}
+                        helperText={touched.email && errors.email}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="mobileNo"
+                        label="Mobile Number"
+                        size="small"
+                        error={touched.mobileNo && errors.mobileNo}
+                        helperText={touched.mobileNo && errors.mobileNo}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth error={touched.nbfcName && errors.nbfcName}>
+                        <InputLabel className="select-label" id="nbfcName">
+                          NBFC Name
+                        </InputLabel>
+                        <Select
+                          labelId="nbfc-select-label"
+                          id="nbfcName"
+                          value={values.nbfcName}
+                          label="NBFC Name"
+                          onChange={handleChange}
+                          name="nbfcName"
+                          size="small"
+                          disabled={editingUser ? true : false}
+                        >
+                          {nbfcs.map((nbfc) => (
+                            <MenuItem key={nbfc.NBFC_CODE} value={nbfc.NBFC_CODE}>
+                              {nbfc.NBFC_DESC}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {touched.nbfcName && errors.nbfcName && <Typography color="error">{errors.nbfcName}</Typography>}
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Divider className="custome-divider mb-4" textAlign="left">
+                        Address
+                      </Divider>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="address"
+                        size="small"
+                        label="Address"
+                        error={touched.address && errors.address}
+                        helperText={touched.address && errors.address}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="city"
+                        size="small"
+                        label="City"
+                        error={touched.city && errors.city}
+                        helperText={touched.city && errors.city}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="district"
+                        size="small"
+                        label="District"
+                        error={touched.district && errors.district}
+                        helperText={touched.district && errors.district}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="state"
+                        label="State"
+                        size="small"
+                        error={touched.state && errors.state}
+                        helperText={touched.state && errors.state}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="pincode"
+                        label="Pincode"
+                        size="small"
+                        error={touched.pincode && errors.pincode}
+                        helperText={touched.pincode && errors.pincode}
+                        disabled={editingUser ? true : false}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Divider className="custome-divider mb-4" textAlign="left">
+                        Portal Roles
+                      </Divider>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        className="custom-check"
+                        control={
+                          <Checkbox
+                            checked={values?.portalRoles && values?.portalRoles?.includes('NBFC_REF_USER')}
+                            onChange={handleChange}
+                            name="portalRoles"
+                            value="NBFC_REF_USER"
+                          />
+                        }
+                        label="Refinance"
+                      />
+                      <FormControlLabel
+                        className="custom-check"
+                        control={
+                          <Checkbox
+                            checked={values.portalRoles.includes('CDA_USER')}
+                            onChange={handleChange}
+                            name="portalRoles"
+                            value="CDA_USER"
+                          />
+                        }
+                        label="CDA"
+                      />
+                      <FormControlLabel
+                        className="custom-check"
+                        control={
+                          <Checkbox
+                            checked={values.portalRoles.includes('CL_USER')}
+                            onChange={handleChange}
+                            name="portalRoles"
+                            value="CL_USER"
+                          />
+                        }
+                        label="Colending"
+                      />
+                      {touched.portalRoles && errors.portalRoles && <Typography color="error">{errors.portalRoles}</Typography>}
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Divider className="custome-divider mb-4" textAlign="left">
+                        User Type
+                      </Divider>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <RadioGroup name="regType" value={values?.regType} onChange={handleChange}>
+                        <FormControlLabel className="custom-check" control={<Radio value="Maker" label="Maker" />} label="Maker" />
+                        <FormControlLabel className="custom-check" control={<Radio value="Checker" />} label="Checker" />
+                      </RadioGroup>
+                    </Grid>
+                  </Grid>
 
-    </>
+                  <DialogActions>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setOpenDialog(false);
+                        setEditingUser(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button size="small" className="add-button" type="submit" variant="contained" color="primary">
+                      {editingUser ? 'Update' : 'Submit'}
+                    </Button>
+                  </DialogActions>
+                </Form>
+              </DialogContent>
+            </>
+          )}
+        </Formik>
+      </Dialog>
+    </Box>
   );
-}
+};
 
-export default Dashboard;
+export default UserForm;

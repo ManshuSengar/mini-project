@@ -1,0 +1,111 @@
+      <div className='custome-form'>
+          <Formik initialValues={executiveSummary}
+            // validationSchema={visitChecksPortfolioInformationSchema}
+            onSubmit={async (values) => {
+              try {
+                //setErrorMessage("");
+                //setOpenSnackbar(true);
+                //setSeverity("success");
+                //setSnackMsg("Data Saved Successfully");
+                await addExecutiveSummary(values).unwrap();
+                // resetForm();
+              }
+              catch (err: any) {
+                console.log("err?.data", err);
+                setErrorMessage(err?.message);
+              }
+            }}
+            enableReinitialize={true}  >
+            {({ isSubmitting, handleSubmit, values, handleChange }) => (
+              <Form>
+                <Grid
+                  spacing={2}
+                  padding={4}
+                  container
+                  className='form-grid'
+                >
+                  <Grid item xs={12} sm={6} md={6} lg={6}>
+                    <FormControl fullWidth>
+                      <TextField label="Name of the NBFC" size="small" />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={6} lg={6}>
+                    <FormControl fullWidth>
+
+                      <InputLabel className="select-label" id="eligibility">Past association with SIDBI</InputLabel>
+                      <Select
+                        labelId="eligibility"
+                        id="pastAssociate"
+                        label="Past association with SIDBI"
+                        size="small"
+                        value={executiveSummary?.pastAssociation}
+                        name="pastAssociation"
+                        onChange={handleChange}
+                      >
+                        <MenuItem value="New to Business">New to Business</MenuItem>
+                        <MenuItem value="Existing to Business">Existing to Business</MenuItem>
+                        <MenuItem value="Past to Business">New to Business</MenuItem>
+                      </Select>
+
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={12} lg={12}>
+                    <FormControl fullWidth>
+                      <TextAreaField
+                        label="Brief background of NBFC/NBFC-MFI "
+                        name="briefBackground"
+                      />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={6} lg={6}>
+                    <FormControl fullWidth>
+                      <TextAreaField label="Promoter" name="promotor" />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={6} lg={6}>
+                    <FormControl fullWidth>
+                      <TextAreaField label="External rating detail" name="extRating" />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={12} lg={12}>
+                    <Divider className='my-1' textAlign="left">
+                      <b>Internal Rating Details </b></Divider>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={6} lg={6}>
+                    <FormControl fullWidth>
+                      <TextField
+                        label="Internal Score"
+                        name="internalRatingScore"
+                      />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={6} lg={6}>
+                    <FormControl fullWidth>
+                      <TextField
+                        label="RAM Rating Grade"
+                        name="ramRatingGrade"
+                      />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={12} lg={12}>
+                    <Divider className='my-1' textAlign="left"><b>Product offered</b></Divider>
+                  </Grid>
+                  <Grid item xs={12} sm={12} md={12} lg={12}>
+                    <FormControl fullWidth>
+                      <TextAreaField
+                        label="Product offered"
+                        name="productOffered"
+                      />
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} textAlign="right">
+                    <Button type="submit" size="small"
+                      className="text-capitalize" variant="contained" color="primary">
+                      Save
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Form>
+            )}
+          </Formik>
+        </div>

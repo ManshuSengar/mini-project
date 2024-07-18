@@ -1,0 +1,354 @@
+import {
+  Grid, Typography, Divider, Button, Tooltip,
+  Box, Tabs, Tab, Fade
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Formik, Form, FormikProps } from 'formik';
+import { defaultMarketIntelligenceInformation, marketIntelligenceInformationSchema } from '../../models/markete-intelligence/marketIntelligence';
+import { useAddMirMutation, useGenReportQuery, useGetMirQuery, useUpdateMirMutation } from '../../features/mir/api';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { setDrawerState, setMirStatus } from '../../features/lead/leadSlice';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AiOutlineCheck, AiOutlineClose, AiOutlineFilePdf, AiOutlineArrowLeft } from "react-icons/ai";
+import FileModal from '../../components/framework/FileModal';
+import { DatePickerField } from '../../components/framework/DatePickerField';
+import RadioButtonField from '../../components/framework/RadioButtonField';
+import ErrorMessageGlobal from '../../components/framework/ErrorMessageGlobal';
+import { DropDownField } from '../../components/framework/DropDownField';
+import { TextBoxField } from '../../components/framework/TextBoxField';
+import { TextAreaField } from '../../components/framework/TextAreaAuto';
+import Section from '../nbfc/Section';
+import Workflow from '../workflow/Workflow';
+import { TabPanelProps } from "../../models/tabPanel";
+
+function CustomTabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`simple-tabpanel-${index}`}
+      className="wrap-tab-container py-2"
+      aria-labelledby={`simple-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  );
+}
+
+function a11yProps(index: number) {
+  return {
+    id: `simple-tab-${index}`,
+    'aria-controls': `simple-tabpanel-${index}`,
+  };
+}
+
+const MarketIntelligenceSheet = () => {
+  const [value, setValue] = React.useState(0);
+
+  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    setValue(newValue);
+  };
+  const [mirId, updateMirId] = useState<number | null>(null);
+  const [error, setError] = useState<any>();
+  const [isLoading, setIsLoading] = useState(false);
+  const { id: mirIdParam } = useParams<{ id: string }>();
+  const { mirStatus } = useAppSelector((state) => state.leadStore);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [addMir] = useAddMirMutation();
+  const [updateMir] = useUpdateMirMutation();
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [fileTypePdf, setFileTypePdf] = useState(false);
+  const [fileTypeImage, setFileTypeImage] = useState(false);
+  const { data: initialData, isLoading: isInitialLoading } = useGetMirQuery(Number(mirIdParam), {
+    skip: !mirIdParam,
+  });
+  let { data: reportData, isLoading: reportLoading } = useGenReportQuery(Number(mirIdParam), {
+    skip: !mirIdParam,
+  })
+  useEffect(() => {
+    if (window.location.pathname.split("/")[2] === 'mir') {
+      dispatch(setDrawerState(false));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mirIdParam) {
+      updateMirId(Number(mirIdParam));
+    }
+  }, [mirIdParam]);
+
+  if (isInitialLoading) {
+    return <Typography>Loading...</Typography>;
+  }
+
+  interface IFormValues {
+    myInput: string;
+  }
+
+  const handleButtonClick = async (
+    status: "01" | "02" | "03" | "04",
+    formikProps: FormikProps<IFormValues>
+  ) => {
+    const { values, submitForm, setSubmitting, validateForm } = formikProps;
+    setIsLoading(true);
+    setError(null);
+    submitForm();
+    const error = await validateForm();
+    if (Object.keys(error).length === 0) {
+      try {
+        if (mirId) {
+          await updateMir({ ...values, id: mirId, status }).unwrap();
+        } else {
+          const response = await addMir({ ...values, status }).unwrap();
+          updateMirId(response.id);
+        }
+        setSubmitting(false);
+        dispatch(setMirStatus(status));
+        navigate('/los/mir-dashboard');
+      } catch (error) {
+        setSubmitting(false);
+        setIsLoading(false);
+        setError(error);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSubmitting(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleModelViewClose = () => {
+    setShowViewModal(false);
+  }
+
+  const handleViewModal = (event: any) => {
+    setShowViewModal(true);
+    setFileTypePdf(true);
+  }
+
+  return (
+    <>
+      <div className="wrap-appraisal-area">
+        <Section>
+          <Box className="wrap-tabs" sx={{ width: '100%' }}>
+            <Box className="tab-with-btn" sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <span className='back'>
+                <Tooltip
+                  TransitionComponent={Fade}
+                  TransitionProps={{ timeout: 600 }}
+                  title="Back MIR Dashboard" placement="top">
+                  <Link to="/los/mir-dashboard" className="in-clickable font17 round-button">
+                    <AiOutlineArrowLeft />
+                  </Link>
+                </Tooltip>
+              </span>
+              <Tabs className="tabs-header" value={value} onChange={handleChange} aria-label="basic tabs example">
+                <Tab className="tab-ui" label="Market Intelligence report" {...a11yProps(0)} />
+                <Tab className="tab-ui" label="Workflow" {...a11yProps(1)} />
+              </Tabs>
+            </Box>
+            <CustomTabPanel value={value} index={0}>
+              <ErrorMessageGlobal status={error} />
+                <div className='custome-form'>
+                  <div className='d-flex justify-content-end'>
+                    {
+                      window.location.pathname === "/los/mir" && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          className="text-capitalize shadow-none search-color"
+                          startIcon={<AiOutlineFilePdf />}
+                        >
+                          Please fill details to View Report
+                        </Button>
+                      )
+                    }
+
+                    {mirIdParam &&
+                      <Button
+                        variant="contained"
+                        size="small"
+                        className="text-capitalize shadow-none search-color"
+                        onClick={(event) => handleViewModal(event)}
+                        startIcon={<AiOutlineFilePdf />}
+                      >
+                        View Report
+                      </Button>
+                    }
+                  </div>
+                  <Formik
+                    initialValues={initialData || defaultMarketIntelligenceInformation}
+                    validationSchema={marketIntelligenceInformationSchema}
+                    onSubmit={() => console.log("do nothing here.")}
+                    enableReinitialize={true}
+                  >
+                    {formikProps => {
+                      const {
+                        values,
+                        handleBlur,
+                        handleChange,
+                        isSubmitting,
+                        submitCount
+                      } = formikProps;
+                      return (
+                        <Form>
+                          <Grid spacing={2} padding={4} container className='form-grid pb-0'>
+                            <Grid item xs={12} lg={3}>
+                              <DropDownField
+                                label="Name of Borrower: *"
+                                name="customerName"
+                                domain="mstr/getNbfcMaster"
+                              />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              <DropDownField
+                                label="Nature of Business: * "
+                                name="businessNature"
+                                domain="mstr/businessNature"
+                              />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              <DropDownField
+                                label="Purpose of Loan: * "
+                                name="loanPurpose"
+                                domain="mstr/loanPurpose"
+                              />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              <TextBoxField label="Name of Beneficial Owner" name="beneficiaryOwners" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              <DatePickerField label="Valid From" name="mirValidFrom" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              <DatePickerField label="Valid Till" name="mirValidTo" />
+                            </Grid>
+                            <Grid item xs={12} lg={12}>
+                              <Divider className='mb-3' textAlign="left">
+                                <span className='seperator-ui'>Comments On the Borrower</span>
+                              </Divider>
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              Document Management Plans
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField label="Document Management Plans" name="customerMgmtPlans" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              Social Media
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField name="customerSocialMedia" label="Social Media" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              News article/Media reports
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField name="customerNewsArticles" label="News article/Media reports" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              Peer review
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField name="customerPeerReview" label="Peer review" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              Stock exchanges searches- Only for listed entities
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField name="customerStockExchng" label="Stock exchanges searches- Only for listed entities" />
+                            </Grid>
+                            <Grid item xs={12} lg={12}>
+                              <Divider className='mb-3' textAlign="left">
+                                <span className='seperator-ui'>Comments On the Beneficial owner</span>
+                              </Divider>
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              Social Media
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField name="beneficiarySocialMedia" label="Social Media" />
+                            </Grid>
+                            <Grid item xs={12} lg={3}>
+                              News article/Media reports
+                            </Grid>
+                            <Grid item xs={12} lg={9}>
+                              <TextAreaField name="beneficiaryNewsArticles" label="News article/Media reports" />
+                            </Grid>
+                            <Grid item xs={12} lg={6}>
+                              <RadioButtonField label="Whether consent applicable for verifying data from third party source" name="mirActiveStatus" options={[
+                                { label: 'Yes', value: 'Y' },
+                                { label: 'No', value: 'N' }
+                              ]} />
+                            </Grid>
+                            <Grid item xs={12} textAlign="right">
+                              {values.status == "01" ? <><Button
+                                variant="outlined"
+                                size="small"
+                                className="text-capitalize me-2"
+                                onClick={() => handleButtonClick("01", formikProps)}
+                                disabled={isSubmitting}
+                              >
+                                Save as draft
+                              </Button>
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  className="text-capitalize"
+                                  onClick={() => handleButtonClick("02", formikProps)}
+                                  disabled={isSubmitting}
+                                >
+                                  Save
+                                </Button></>
+                                : values.status == "02" ? <><Button
+                                  variant="contained"
+                                  className="text-capitalize me-2"
+                                  startIcon={<AiOutlineCheck />}
+                                  color="success"
+                                  size="small"
+                                  onClick={() => handleButtonClick("03", formikProps)}
+                                  disabled={isSubmitting}
+                                >
+                                  Approve
+                                </Button>
+                                  <Button
+                                    variant="contained"
+                                    className="text-capitalize"
+                                    size="small"
+                                    onClick={() => handleButtonClick("04", formikProps)}
+                                    disabled={isSubmitting}
+                                    startIcon={<AiOutlineClose />} color="error"
+                                  >
+                                    Reject
+                                  </Button></> : <></>}
+
+                            </Grid>
+                          </Grid>
+                        </Form>
+                      );
+                    }}
+                  </Formik>
+                </div>
+              {showViewModal && (
+                <FileModal
+                  show={showViewModal} uploadFileData={reportData?.repData}
+                  fileTypeImage={fileTypeImage} fileTypePdf={fileTypePdf}
+                  handleModelViewClose={handleModelViewClose}
+                />
+              )}
+            </CustomTabPanel>
+            <CustomTabPanel value={value} index={1}>
+              <Workflow formIdVal={'2'} formTypeVal={'APPR'} />
+            </CustomTabPanel>
+          </Box>
+        </Section>
+      </div>
+    </>
+  );
+};
+
+export default MarketIntelligenceSheet;

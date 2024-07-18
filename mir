@@ -1,354 +1,549 @@
-import {
-  Grid, Typography, Divider, Button, Tooltip,
-  Box, Tabs, Tab, Fade
-} from '@mui/material';
-import React, { useEffect, useState } from 'react';
-import { Formik, Form, FormikProps } from 'formik';
-import { defaultMarketIntelligenceInformation, marketIntelligenceInformationSchema } from '../../models/markete-intelligence/marketIntelligence';
-import { useAddMirMutation, useGenReportQuery, useGetMirQuery, useUpdateMirMutation } from '../../features/mir/api';
-import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { setDrawerState, setMirStatus } from '../../features/lead/leadSlice';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AiOutlineCheck, AiOutlineClose, AiOutlineFilePdf, AiOutlineArrowLeft } from "react-icons/ai";
-import FileModal from '../../components/framework/FileModal';
-import { DatePickerField } from '../../components/framework/DatePickerField';
-import RadioButtonField from '../../components/framework/RadioButtonField';
-import ErrorMessageGlobal from '../../components/framework/ErrorMessageGlobal';
-import { DropDownField } from '../../components/framework/DropDownField';
-import { TextBoxField } from '../../components/framework/TextBoxField';
-import { TextAreaField } from '../../components/framework/TextAreaAuto';
-import Section from '../nbfc/Section';
-import Workflow from '../workflow/Workflow';
-import { TabPanelProps } from "../../models/tabPanel";
+import { Accordion, AccordionDetails, AccordionSummary, Divider, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Button } from "@mui/material"
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import React, { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useAddExecutiveSummaryMutation, useGetExecutiveSummaryByIdQuery } from "../../../features/appraisal/executiveSummaryApi";
+import { Formik, Form, useFormikContext } from "formik";
+import { styled } from "@mui/material/styles";
+import { TextAreaField } from "../../../components/framework/TextAreaAuto";
+import { DropDownField } from "../../../components/framework/DropDownField";
 
-function CustomTabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      className="wrap-tab-container py-2"
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box>{children}</Box>}
-    </div>
-  );
-}
-
-function a11yProps(index: number) {
-  return {
-    id: `simple-tab-${index}`,
-    'aria-controls': `simple-tabpanel-${index}`,
-  };
-}
-
-const MarketIntelligenceSheet = () => {
-  const [value, setValue] = React.useState(0);
-
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-  const [mirId, updateMirId] = useState<number | null>(null);
-  const [error, setError] = useState<any>();
-  const [isLoading, setIsLoading] = useState(false);
-  const { id: mirIdParam } = useParams<{ id: string }>();
-  const { mirStatus } = useAppSelector((state) => state.leadStore);
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const [addMir] = useAddMirMutation();
-  const [updateMir] = useUpdateMirMutation();
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [fileTypePdf, setFileTypePdf] = useState(false);
-  const [fileTypeImage, setFileTypeImage] = useState(false);
-  const { data: initialData, isLoading: isInitialLoading } = useGetMirQuery(Number(mirIdParam), {
-    skip: !mirIdParam,
-  });
-  let { data: reportData, isLoading: reportLoading } = useGenReportQuery(Number(mirIdParam), {
-    skip: !mirIdParam,
-  })
-  useEffect(() => {
-    if (window.location.pathname.split("/")[2] === 'mir') {
-      dispatch(setDrawerState(false));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (mirIdParam) {
-      updateMirId(Number(mirIdParam));
-    }
-  }, [mirIdParam]);
-
-  if (isInitialLoading) {
-    return <Typography>Loading...</Typography>;
-  }
-
-  interface IFormValues {
-    myInput: string;
-  }
-
-  const handleButtonClick = async (
-    status: "01" | "02" | "03" | "04",
-    formikProps: FormikProps<IFormValues>
-  ) => {
-    const { values, submitForm, setSubmitting, validateForm } = formikProps;
-    setIsLoading(true);
-    setError(null);
-    submitForm();
-    const error = await validateForm();
-    if (Object.keys(error).length === 0) {
+import { TextBoxField } from "../../../components/framework/TextBoxField"
+import { debounce } from 'lodash';
+const AutoSave = ({ debounceMs = 1000 }) => {
+  const formik = useFormikContext();
+  const [lastSaved, setLastSaved] = useState<any>(null);
+ 
+  const debouncedSubmit = useCallback(
+    debounce(async () => {
       try {
-        if (mirId) {
-          await updateMir({ ...values, id: mirId, status }).unwrap();
-        } else {
-          const response = await addMir({ ...values, status }).unwrap();
-          updateMirId(response.id);
-        }
-        setSubmitting(false);
-        dispatch(setMirStatus(status));
-        navigate('/los/mir-dashboard');
+        await formik.submitForm();
+        setLastSaved(new Date());
       } catch (error) {
-        setSubmitting(false);
-        setIsLoading(false);
-        setError(error);
-      } finally {
-        setIsLoading(false);
+        console.error('Error during autosave:', error);
       }
-    } else {
-      setSubmitting(false);
-      setIsLoading(false);
+    }, debounceMs),
+    [formik.submitForm]
+  );
+ 
+  const handleFieldChange = (event: any) => {
+    formik.handleChange(event);
+    debouncedSubmit();
+  };
+ 
+  useEffect(() => {
+    return () => {
+      debouncedSubmit.cancel();
+    };
+  }, [debouncedSubmit]);
+ 
+  return { handleFieldChange, lastSaved };
+};
+
+
+const ExecutiveSummery = () => {
+  const [expanded, setExpanded] = React.useState('');
+  const textRef2 = useRef<any>();
+  const textRef1 = useRef<any>();
+  const textRef3 = useRef<any>();
+  const textRef4 = useRef<any>();
+  const textRef5 = useRef<any>();
+  const textRef6 = useRef<any>();
+  const onOpenChange = (panel: any) => (event: React.SyntheticEvent, isExpanded: any) => {
+    setExpanded(isExpanded ? panel : false);
+  };
+  const formValuesRef = useRef({});
+
+  const [addExecutiveSummary, response] = useAddExecutiveSummaryMutation();
+  const [errorMessage, setErrorMessage] = useState<any>("");
+
+  const [id, setId] = useState<number>(12345);
+  const { data: executiveData, isLoading, isFetching } = useGetExecutiveSummaryByIdQuery(id);
+
+  const initialValues = {
+    nbfcName: '',
+    pastAssociation: '',
+    briefBackground: '',
+    promotor: '',
+    extRating: '',
+    ramRatingGrade: '',
+    internalScore: '',
+    productOffered: '',
+  };
+
+  const onChangeHandler = function (e: SyntheticEvent, refName: any) {
+    const target = e.target as HTMLTextAreaElement;
+    refName.current.style.height = "60px";
+    refName.current.style.height = `${target.scrollHeight}px`;
+  };
+  const handleSubmit = async (values: any) => {
+    try {
+      console.log("hello1");
+      await addExecutiveSummary(values).unwrap();
+    } catch (err) {
+      console.error("Error saving data:", err);
     }
   };
 
-  const handleModelViewClose = () => {
-    setShowViewModal(false);
-  }
+  /// autosave ---> 
 
-  const handleViewModal = (event: any) => {
-    setShowViewModal(true);
-    setFileTypePdf(true);
-  }
+ 
+  /// autosave end ---> 
+
+
+
+
+
+  if (isLoading) return <h6>Loading... </h6>
 
   return (
     <>
-      <div className="wrap-appraisal-area">
-        <Section>
-          <Box className="wrap-tabs" sx={{ width: '100%' }}>
-            <Box className="tab-with-btn" sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <span className='back'>
-                <Tooltip
-                  TransitionComponent={Fade}
-                  TransitionProps={{ timeout: 600 }}
-                  title="Back MIR Dashboard" placement="top">
-                  <Link to="/los/mir-dashboard" className="in-clickable font17 round-button">
-                    <AiOutlineArrowLeft />
-                  </Link>
-                </Tooltip>
-              </span>
-              <Tabs className="tabs-header" value={value} onChange={handleChange} aria-label="basic tabs example">
-                <Tab className="tab-ui" label="Market Intelligence report" {...a11yProps(0)} />
-                <Tab className="tab-ui" label="Workflow" {...a11yProps(1)} />
-              </Tabs>
-            </Box>
-            <CustomTabPanel value={value} index={0}>
-              <ErrorMessageGlobal status={error} />
-                <div className='custome-form'>
-                  <div className='d-flex justify-content-end'>
-                    {
-                      window.location.pathname === "/los/mir" && (
-                        <Button
-                          variant="contained"
-                          size="small"
-                          className="text-capitalize shadow-none search-color"
-                          startIcon={<AiOutlineFilePdf />}
-                        >
-                          Please fill details to View Report
+      <div className='custome-form'>
+        <div className='custome-form'>
+          <div className='custome-form'>
+            <Formik
+              initialValues={initialValues}
+              onSubmit={handleSubmit}
+              enableReinitialize={true}
+            >
+              {({ values, setFieldValue, handleChange }) => {
+                const { handleFieldChange, lastSaved } = AutoSave({ debounceMs: 1000 });
+                return (
+                  <Form>
+                   
+                    <Grid spacing={2} padding={4} container className='form-grid'>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="Name of the NBFC"
+                          name="nbfcName"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <FormControl fullWidth>
+                          <InputLabel className="select-label" id="eligibility">Past association with SIDBI</InputLabel>
+                          <Select
+                            labelId="eligibility"
+                            id="pastAssociate"
+                            label="Past association with SIDBI"
+                            size="small"
+                            value={values?.pastAssociation}
+                            name="pastAssociation"
+                            onChange={handleChange}
+                          >
+                            <MenuItem value="New to Business">New to Business</MenuItem>
+                            <MenuItem value="Existing to Business">Existing to Business</MenuItem>
+                            <MenuItem value="Past to Business">New to Business</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <TextAreaField
+                          label="Brief background of NBFC/NBFC-MFI"
+                          name="briefBackground"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextAreaField label="Promoter" name="promotor" />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextAreaField label="External rating detail" name="extRating" />
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <Divider className='my-1' textAlign="left">
+                          <b>Internal Rating Details </b>
+                        </Divider>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="Internal Score"
+                          name="internalRatingScore"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="RAM Rating Grade"
+                          name="ramRatingGrade"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <Divider className='my-1' textAlign="left">
+                          <b>Product offered</b>
+                        </Divider>
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <TextAreaField
+                          label="Product offered"
+                          name="productOffered"
+                        />
+                      </Grid>
+                      <Grid item xs={12} textAlign="right">
+                        {lastSaved && (
+                          <p>Last autosaved: {lastSaved.toLocaleTimeString()}</p>
+                        )}
+                        <Button type="submit" size="small"
+                          className="text-capitalize" variant="contained" color="primary">
+                          Save
                         </Button>
-                      )
-                    }
-
-                    {mirIdParam &&
-                      <Button
-                        variant="contained"
-                        size="small"
-                        className="text-capitalize shadow-none search-color"
-                        onClick={(event) => handleViewModal(event)}
-                        startIcon={<AiOutlineFilePdf />}
-                      >
-                        View Report
-                      </Button>
-                    }
-                  </div>
-                  <Formik
-                    initialValues={initialData || defaultMarketIntelligenceInformation}
-                    validationSchema={marketIntelligenceInformationSchema}
-                    onSubmit={() => console.log("do nothing here.")}
-                    enableReinitialize={true}
-                  >
-                    {formikProps => {
-                      const {
-                        values,
-                        handleBlur,
-                        handleChange,
-                        isSubmitting,
-                        submitCount
-                      } = formikProps;
-                      return (
-                        <Form>
-                          <Grid spacing={2} padding={4} container className='form-grid pb-0'>
-                            <Grid item xs={12} lg={3}>
-                              <DropDownField
-                                label="Name of Borrower: *"
-                                name="customerName"
-                                domain="mstr/getNbfcMaster"
-                              />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              <DropDownField
-                                label="Nature of Business: * "
-                                name="businessNature"
-                                domain="mstr/businessNature"
-                              />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              <DropDownField
-                                label="Purpose of Loan: * "
-                                name="loanPurpose"
-                                domain="mstr/loanPurpose"
-                              />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              <TextBoxField label="Name of Beneficial Owner" name="beneficiaryOwners" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              <DatePickerField label="Valid From" name="mirValidFrom" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              <DatePickerField label="Valid Till" name="mirValidTo" />
-                            </Grid>
-                            <Grid item xs={12} lg={12}>
-                              <Divider className='mb-3' textAlign="left">
-                                <span className='seperator-ui'>Comments On the Borrower</span>
-                              </Divider>
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              Document Management Plans
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField label="Document Management Plans" name="customerMgmtPlans" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              Social Media
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField name="customerSocialMedia" label="Social Media" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              News article/Media reports
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField name="customerNewsArticles" label="News article/Media reports" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              Peer review
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField name="customerPeerReview" label="Peer review" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              Stock exchanges searches- Only for listed entities
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField name="customerStockExchng" label="Stock exchanges searches- Only for listed entities" />
-                            </Grid>
-                            <Grid item xs={12} lg={12}>
-                              <Divider className='mb-3' textAlign="left">
-                                <span className='seperator-ui'>Comments On the Beneficial owner</span>
-                              </Divider>
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              Social Media
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField name="beneficiarySocialMedia" label="Social Media" />
-                            </Grid>
-                            <Grid item xs={12} lg={3}>
-                              News article/Media reports
-                            </Grid>
-                            <Grid item xs={12} lg={9}>
-                              <TextAreaField name="beneficiaryNewsArticles" label="News article/Media reports" />
-                            </Grid>
-                            <Grid item xs={12} lg={6}>
-                              <RadioButtonField label="Whether consent applicable for verifying data from third party source" name="mirActiveStatus" options={[
-                                { label: 'Yes', value: 'Y' },
-                                { label: 'No', value: 'N' }
-                              ]} />
-                            </Grid>
-                            <Grid item xs={12} textAlign="right">
-                              {values.status == "01" ? <><Button
-                                variant="outlined"
-                                size="small"
-                                className="text-capitalize me-2"
-                                onClick={() => handleButtonClick("01", formikProps)}
-                                disabled={isSubmitting}
-                              >
-                                Save as draft
-                              </Button>
-                                <Button
-                                  variant="contained"
-                                  size="small"
-                                  className="text-capitalize"
-                                  onClick={() => handleButtonClick("02", formikProps)}
-                                  disabled={isSubmitting}
-                                >
-                                  Save
-                                </Button></>
-                                : values.status == "02" ? <><Button
-                                  variant="contained"
-                                  className="text-capitalize me-2"
-                                  startIcon={<AiOutlineCheck />}
-                                  color="success"
-                                  size="small"
-                                  onClick={() => handleButtonClick("03", formikProps)}
-                                  disabled={isSubmitting}
-                                >
-                                  Approve
-                                </Button>
-                                  <Button
-                                    variant="contained"
-                                    className="text-capitalize"
-                                    size="small"
-                                    onClick={() => handleButtonClick("04", formikProps)}
-                                    disabled={isSubmitting}
-                                    startIcon={<AiOutlineClose />} color="error"
-                                  >
-                                    Reject
-                                  </Button></> : <></>}
-
-                            </Grid>
-                          </Grid>
-                        </Form>
-                      );
-                    }}
-                  </Formik>
+                      </Grid>
+                    </Grid>
+                  </Form>
+                );
+              }}
+            </Formik>
+          </div>
+        </div>
+        <Accordion className='custome-accordian mt-3'
+          expanded={expanded === 'panel1'} onChange={onOpenChange('panel1')}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel1-content"
+            id="panel1-header"
+          >
+            Summary of Financial Performance –  (` crore)
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid
+              spacing={1}
+              padding={2}
+              container
+              className='form-grid'
+            >
+              <Grid item xs={12} sm={6} md={6} lg={6}>
+                <div className="wrap-inner-table m-0">
+                  <Table aria-label="simple table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: 40 }}><b>Particulars (Rs Cr)</b></TableCell>
+                        <TableCell sx={{ width: 20 }}><b>Latest Fiscal</b></TableCell>
+                        <TableCell sx={{ width: 20 }}><b>Latest quarter</b></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>
+                          AUM
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest quarter" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          NOF
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest quarter" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          CRAR
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest quarter" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          Tier I
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest quarter" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
                 </div>
-              {showViewModal && (
-                <FileModal
-                  show={showViewModal} uploadFileData={reportData?.repData}
-                  fileTypeImage={fileTypeImage} fileTypePdf={fileTypePdf}
-                  handleModelViewClose={handleModelViewClose}
-                />
-              )}
-            </CustomTabPanel>
-            <CustomTabPanel value={value} index={1}>
-              <Workflow formIdVal={'2'} formTypeVal={'APPR'} />
-            </CustomTabPanel>
-          </Box>
-        </Section>
+              </Grid>
+              <Grid item xs={12} sm={6} md={6} lg={6}>
+                <div className="wrap-inner-table m-0">
+                  <Table aria-label="simple table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: 40 }}><b>Particulars (Rs Cr)</b></TableCell>
+                        <TableCell sx={{ width: 50 }}><b>Latest Fiscal</b></TableCell>
+                        <TableCell sx={{ width: 50 }}><b>Latest quarter</b></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>
+                          Leverage
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          9,047
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest quarter" type="text" />
+                          </FormControl> */}
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          GNPA (%) (Gross Stage 3)
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Quarte" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>
+                          NNPA (%)
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Fiscal" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                        <TableCell>
+                          {/* <FormControl fullWidth>
+                            <TextField size="small" placeholder="Latest Quarte" type="text" />
+                          </FormControl> */}
+                          9,047
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </Grid>
+            </Grid>
+            {/* <Grid
+              spacing={2}
+              padding={4}
+              container
+              className='form-grid'
+            >
+              <Grid item xs={12} sm={6} md={6} lg={6}>
+                <FormControl fullWidth>
+                  <TextField label="Internal rating details" size="small" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} md={6} lg={6}>
+                <FormControl fullWidth>
+                  <TextField label="Proposal for sanction of term loan of(Rs Cr.)" size="small" />
+                </FormControl>
+              </Grid>
+            </Grid> */}
+          </AccordionDetails>
+        </Accordion>
+
+        <Accordion className='custome-accordian'
+          expanded={expanded === 'panel2'} onChange={onOpenChange('panel2')}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls="panel2-content"
+            id="panel2-header"
+          >
+            Facility Details
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid
+              spacing={2}
+              padding={4}
+              container
+              className='form-grid'
+            >
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Amount of loan proposed" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={8} md={8} lg={8}>
+                <FormControl fullWidth>
+                  <textarea
+                    placeholder="Comment"
+                    ref={textRef6}
+                    className="text-area-box"
+                    onChange={(event: any) => onChangeHandler(event, textRef6)}
+                  />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Scheme" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Total Exposure" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              {/* <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Validity of drawl" size="small" type="text" />
+                </FormControl>
+              </Grid> */}
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Tenure" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Moratorium" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Repayment frequency" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Repayment frequency" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <InputLabel className="select-label" id="eligibility">Interest rate Type</InputLabel>
+                  <Select
+                    labelId="eligibility"
+                    id="eligibility"
+                    size="small"
+                    value=""
+                    name="eligibility"
+                  >
+                    <MenuItem value="Fixed">Fixed</MenuItem>
+                    <MenuItem value="Floating">Floating</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <InputLabel className="select-label" id="eligibility">Benchmark</InputLabel>
+                  <Select
+                    labelId="eligibility"
+                    id="eligibility"
+                    size="small"
+                    value=""
+                    name="eligibility"
+                  >
+                    <MenuItem value="1 Year MCLR">1 Year MCLR</MenuItem>
+                    <MenuItem value="PLR">PLR</MenuItem>
+                    <MenuItem value="Repo">Repo</MenuItem>
+                  </Select>
+                  <span className="water-mark">Benchmark rate (7.5 %)</span>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Spread" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Interest rate" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              {/* <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Interest reset" size="small" type="text" />
+                </FormControl>
+              </Grid> */}
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Security" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="ACR" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Any PG/ CG/ FD" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              {/* <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Assets to be refinanced" size="small" type="text" />
+                </FormControl>
+              </Grid> */}
+              <Grid item xs={12} sm={12} md={12} lg={12}>
+                <FormControl fullWidth>
+                  <textarea
+                    placeholder="Remarks"
+                    ref={textRef3}
+                    className="text-area-box"
+                    onChange={(event: any) => onChangeHandler(event, textRef3)}
+                  />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <FormControl fullWidth>
+                    <InputLabel className="select-label" id="eligibility">Delegation of Power-IFCC-DMD</InputLabel>
+                    <Select
+                      labelId="eligibility"
+                      id="eligibility"
+                      size="small"
+                      value=""
+                      name="eligibility"
+                    >
+                      <MenuItem value="CCIC-CGM">CCIC-CGM</MenuItem>
+                      <MenuItem value="IFCC-DMD">IFCC-DMD</MenuItem>
+                      <MenuItem value="EC">EC</MenuItem>
+                    </Select>
+                  </FormControl>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
       </div>
     </>
-  );
-};
-
-export default MarketIntelligenceSheet;
+  )
+}
+export default ExecutiveSummery;

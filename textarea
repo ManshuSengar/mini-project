@@ -1,3 +1,187 @@
+import { Accordion, AccordionDetails, AccordionSummary, Divider, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Button } from "@mui/material"
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import React, { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useAddExecutiveSummaryMutation, useGetExecutiveSummaryByIdQuery } from "../../../features/appraisal/executiveSummaryApi";
+import { Formik, Form, useFormikContext } from "formik";
+import { styled } from "@mui/material/styles";
+import { TextAreaField } from "../../../components/framework/TextAreaAuto";
+import { DropDownField } from "../../../components/framework/DropDownField";
+import * as Yup from "yup";
+import { TextBoxField } from "../../../components/framework/TextBoxField"
+import { debounce } from 'lodash';
+const AutoSave = ({ debounceMs = 1000 }) => {
+  const formik = useFormikContext();
+  const [lastSaved, setLastSaved] = useState<any>(null);
+  const debouncedSubmit = useCallback(
+    debounce(async () => {
+      try {
+        await formik.submitForm();
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Error during autosave:', error);
+      }
+    }, debounceMs),
+    [formik.submitForm]
+  );
+  console.log("formik values", formik.values);
+  useEffect(() => {
+    debouncedSubmit();
+    return () => {
+      debouncedSubmit.cancel();
+    };
+  }, [formik.values, debouncedSubmit]);
+  return lastSaved ? <p>Last autosaved: {lastSaved.toLocaleTimeString()}</p> : null;
+};
+
+
+const ExecutiveSummery = () => {
+  const [expanded, setExpanded] = React.useState('');
+  const textRef2 = useRef<any>();
+  const textRef1 = useRef<any>();
+  const textRef3 = useRef<any>();
+  const textRef4 = useRef<any>();
+  const textRef5 = useRef<any>();
+  const textRef6 = useRef<any>();
+  const onOpenChange = (panel: any) => (event: React.SyntheticEvent, isExpanded: any) => {
+    setExpanded(isExpanded ? panel : false);
+  };
+
+  const [addExecutiveSummary, response] = useAddExecutiveSummaryMutation();
+  const [errorMessage, setErrorMessage] = useState<any>("");
+
+  const [id, setId] = useState<number>(12345);
+  const { data: executiveData, isLoading, isFetching } = useGetExecutiveSummaryByIdQuery(id);
+
+  const initialValues = {
+    nbfcName: '',
+    pastAssociation: '',
+    briefBackground: '',
+    promotor: '',
+    extRating: '',
+    ramRatingGrade: '',
+    internalScore: '',
+    productOffered: '',
+  };
+
+
+  const validationSchema = Yup.object().shape({
+    nbfcName: Yup.string().required("Name of Borrower is required"),
+    // businessNature: Yup.string().required("Nature of Business is required"),
+
+  });
+
+
+  const onChangeHandler = function (e: SyntheticEvent, refName: any) {
+    const target = e.target as HTMLTextAreaElement;
+    refName.current.style.height = "60px";
+    refName.current.style.height = `${target.scrollHeight}px`;
+  };
+  const handleSubmit = async (values: any) => {
+    try {
+      console.log("hello1");
+      await addExecutiveSummary(values).unwrap();
+    } catch (err) {
+      console.error("Error saving data:", err);
+    }
+  };
+  if (isLoading) return <h6>Loading... </h6>
+
+  return (
+    <>
+      <div className='custome-form'>
+        <div className='custome-form'>
+          <div className='custome-form'>
+            <Formik
+              initialValues={initialValues}
+              onSubmit={handleSubmit}
+              // enableReinitialize={true}
+              validationSchema={validationSchema}
+            >
+              {({ values, setFieldValue, handleChange }) => {
+                return (
+                  <Form>
+                    <AutoSave debounceMs={1000} />
+                    <Grid spacing={2} padding={4} container className='form-grid'>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="Name of the NBFC"
+                          name="nbfcName"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <FormControl fullWidth>
+                          <InputLabel className="select-label" id="eligibility">Past association with SIDBI</InputLabel>
+                          <Select
+                            labelId="eligibility"
+                            id="pastAssociate"
+                            label="Past association with SIDBI"
+                            size="small"
+                            value={values?.pastAssociation}
+                            name="pastAssociation"
+                            onChange={handleChange}
+                          >
+                            <MenuItem value="New to Business">New to Business</MenuItem>
+                            <MenuItem value="Existing to Business">Existing to Business</MenuItem>
+                            <MenuItem value="Past to Business">New to Business</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <TextAreaField
+                          label="Brief background of NBFC/NBFC-MFI"
+                          name="briefBackground"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextAreaField label="Promoter" name="promotor" />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextAreaField label="External rating detail" name="extRating" />
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <Divider className='my-1' textAlign="left">
+                          <b>Internal Rating Details </b>
+                        </Divider>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="Internal Score"
+                          name="internalRatingScore"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="RAM Rating Grade"
+                          name="ramRatingGrade"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <Divider className='my-1' textAlign="left">
+                          <b>Product offered</b>
+                        </Divider>
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <TextAreaField
+                          label="Product offered"
+                          name="productOffered"
+                        />
+                      </Grid>
+                      <Grid item xs={12} textAlign="right">
+                        <Button type="submit" size="small"
+                          className="text-capitalize" variant="contained" color="primary">
+                          Save
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </Form>
+                );
+              }}
+            </Formik>
+          </div>
+        </div>
+
+
 import Grid from "@mui/material/Grid";
 import { KeyValuePair } from "./KeyValuePair";
 import { getIn, useFormikContext } from "formik";
@@ -40,46 +224,3 @@ export const TextBoxField = (props: {
     </Grid>
   );
 };
-
-import { styled } from "@mui/material/styles";
-import TextField from "@mui/material/TextField";
-
-const RedditTextField = styled((props) => (
-  <TextField InputProps={{ disableUnderline: true }} fullWidth {...props} />
-))(({ theme }) => ({
-  "& .MuiFormLabel-root.MuiInputLabel-root": {
-    color: "#A9A9A9",
-  },
-  "& .MuiFilledInput-root": {
-    overflow: "hidden",
-    maxHeight: "52px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid",
-    borderColor: "#C0C0C0",
-    borderRadius: "0px !important",
-    transition: theme.transitions.create([
-      "border-color",
-      "background-color",
-      "box-shadow",
-    ]),
-    "&:hover": {
-      backgroundColor: "transparent",
-    },
-    "&.MuiInputBase-input": {
-      color: "#3B415B !important",
-    },
-    "&.Mui-focused": {
-      backgroundColor: "transparent",
-      borderColor: "#1377FF",
-    },
-    "&:before": {
-      borderBottom: "none  !important", // Remove bottom border
-    },
-    "&:after": {
-      borderBottom: "none  !important", // Remove bottom border
-    },
-  },
-}));
-
-export default RedditTextField;
-

@@ -1,37 +1,31 @@
-import { Accordion, AccordionDetails, AccordionSummary, Divider, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Button } from "@mui/material"
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import React, { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
-import { useAddExecutiveSummaryMutation, useGetExecutiveSummaryByIdQuery } from "../../../features/appraisal/executiveSummaryApi";
-import { Formik, Form, useFormikContext } from "formik";
-import { styled } from "@mui/material/styles";
-import { TextAreaField } from "../../../components/framework/TextAreaAuto";
-import { DropDownField } from "../../../components/framework/DropDownField";
-import * as Yup from "yup";
-import { TextBoxField } from "../../../components/framework/TextBoxField"
 import { debounce } from 'lodash';
 const AutoSave = ({ debounceMs = 1000 }) => {
   const formik = useFormikContext();
   const [lastSaved, setLastSaved] = useState<any>(null);
   const debouncedSubmit = useCallback(
     debounce(async () => {
-      try {
-        await formik.submitForm();
-        setLastSaved(new Date());
-      } catch (error) {
-        console.error('Error during autosave:', error);
+      if (formik.isValid && formik.dirty) {
+        try {
+          await formik.submitForm();
+          setLastSaved(new Date());
+        } catch (error) {
+          console.error('Error during autosave:', error);
+        }
       }
     }, debounceMs),
-    [formik.submitForm]
+    [formik.submitForm, formik.isValid, formik.dirty]
   );
-  console.log("formik values", formik.values);
+
   useEffect(() => {
     debouncedSubmit();
     return () => {
       debouncedSubmit.cancel();
     };
   }, [formik.values, debouncedSubmit]);
+
   return lastSaved ? <p>Last autosaved: {lastSaved.toLocaleTimeString()}</p> : null;
 };
+
 
 
 const ExecutiveSummery = () => {
@@ -61,6 +55,7 @@ const ExecutiveSummery = () => {
     ramRatingGrade: '',
     internalScore: '',
     productOffered: '',
+    internalRatingScore: ''
   };
 
 
@@ -94,8 +89,9 @@ const ExecutiveSummery = () => {
             <Formik
               initialValues={initialValues}
               onSubmit={handleSubmit}
-              // enableReinitialize={true}
               validationSchema={validationSchema}
+              validateOnChange={false}
+              validateOnBlur={true}
             >
               {({ values, setFieldValue, handleChange }) => {
                 return (
@@ -180,47 +176,3 @@ const ExecutiveSummery = () => {
             </Formik>
           </div>
         </div>
-
-
-import Grid from "@mui/material/Grid";
-import { KeyValuePair } from "./KeyValuePair";
-import { getIn, useFormikContext } from "formik";
-import RedditTextField from "./RedditTextField";
-import Typography from "@mui/material/Typography";
-
-export const TextBoxField = (props: {
-  id?: number;
-  label: string;
-  name: string
-}) => {
-  const { handleChange, handleBlur, values, touched, errors } =
-    useFormikContext<KeyValuePair>() || {};
-
-  return (
-    <Grid item xs={12}>
-      <Grid item xs={12}>
-        <RedditTextField
-				  label={props.label}
-				  className={props.name}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          value={getIn(values, props.name)}
-          name={props.name}
-          size="small"
-				/>
-      </Grid>
-      <Grid item xs={12}>
-      <Typography
-          color="error"
-          variant="subtitle2"
-          gutterBottom
-          component="span"
-          className="mybooking_error"
-        >
-          {getIn(touched, props.name) && getIn(errors, props.name) &&
-            JSON.stringify(getIn(errors, props.name)).replaceAll('"', "")}
-        </Typography>
-      </Grid>
-    </Grid>
-  );
-};

@@ -1,84 +1,202 @@
-import Grid from "@mui/material/Grid";
-import { KeyValuePair } from "./KeyValuePair";
-import { getIn, useFormikContext } from "formik";
-import RedditTextField from "./RedditTextField";
-import Typography from "@mui/material/Typography";
+ const [id, setId] = useState<any>(userData?.id);
+  const { data: externalRatingData, isLoading } = useGetExternalRatingByIdQuery(id);
+  const [addExternalRating] = useAddExternalRatingMutation();
+  const [updateExternalRating] = useUpdateExternalRatingMutation();
 
-export const TextBoxField = (props: {
-  id?: number;
-  label: string;
-  name: string
-}) => {
-  const { handleChange, handleBlur, values, touched, errors } =
-    useFormikContext<KeyValuePair>() || {};
 
-  return (
-    <Grid item xs={12}>
-      <Grid item xs={12}>
-        <RedditTextField
-				  label={props.label}
-				  className={props.name}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          value={getIn(values, props.name)}
-          name={props.name}
-          size="small"
-				/>
-      </Grid>
-      <Grid item xs={12}>
-      <Typography
-          color="error"
-          variant="subtitle2"
-          gutterBottom
-          component="span"
-          className="mybooking_error"
+
+  const handleSubmit = async (values: any) => {
+    try {
+
+
+      console.log("values--> ", values);
+      if (!userData?.id) {
+        await addExternalRating(values.ratings).unwrap();
+      } else {
+        await updateExternalRating(values.ratings).unwrap();
+      }
+    } catch (err) {
+      console.error("Error saving data:", err);
+    }
+  };
+
+
+  const profileInitialValues = {
+    applId: "",
+    covenantBreach: "",
+    pendingComl: "",
+    detailsOfGroup: "",
+    compDetails: "",
+    extRatHoldComp: "",
+    taggedRating: "",
+    lowestRating: "",
+    ratingMovement: "",
+    strength: "",
+    weakness: "",
+    weaknessComments: "",
+    upwardFactors: "",
+    downwardFactors: "",
+    downFactorsComments: "",
+    intRatingComments: "",
+    saveStatus: "",
+    ratingExtract: ""
+  }
+
+
+ <div className="wrap-inner-table">
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell><b>Tagged Rating</b></TableCell>
+                <TableCell><b>Lowest Rating</b></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextBoxField label="" name="taggedRating" />
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextBoxField label="" name="lowestRating" />
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+        <div className="wrap-inner-table">
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell><b>Grading for MFI</b></TableCell>
+                <TableCell><b>COCO for MFI</b></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextBoxField label="" name="" />
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextBoxField label="" name="" />
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+        <Grid spacing={2}
+          padding={4}
+          container
+          className='form-grid'>
+          <Grid item xs={12} sm={6} md={3} lg={3}>
+            External Credit Rating of Holding Company
+          </Grid>
+          <Grid item xs={12} sm={6} md={9} lg={9}>
+            <TextBoxField
+              label="External Credit Rating of Holding Company"
+              name="extRatHoldComp"
+            />
+          </Grid>
+        </Grid>
+        <Grid
+          spacing={2}
+          padding={4}
+          container
+          className='form-grid'
         >
-          {getIn(touched, props.name) && getIn(errors, props.name) &&
-            JSON.stringify(getIn(errors, props.name)).replaceAll('"', "")}
-        </Typography>
-      </Grid>
-    </Grid>
-  );
-};
+          <Grid item xs={12} sm={6} md={3} lg={3}>
+            Rating Movement in last 3 years
+          </Grid>
+          <Grid item xs={12} sm={6} md={3} lg={9}>
+            <TextBoxField label="Rating Movement in last 3 years" name="ratingMovement" />
+          </Grid>
+        </Grid>
+        <div className="wrap-inner-table">
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell><b>Strength</b></TableCell>
+                <TableCell><b>Weakness</b></TableCell>
+                <TableCell><b>Comments on Weaknesses</b></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                <TableCell>
+                  <div className="wrap-richtext">
+                    <RichTextField label="" name="strength" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="wrap-richtext">
+                    <RichTextField label="" name="weakness" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="wrap-richtext">
+                    <RichTextField label="" name="weaknessComments" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+        <Grid
+          spacing={2}
+          padding={4}
+          container
+          className='form-grid'
+        >
+          <Grid item xs={12} sm={6} md={3} lg={12}>
+            <b>Rating Sensitivity Factors</b>
+          </Grid>
+          <Grid item xs={12} sm={12} md={12} lg={12}>
+            <div className="wrap-inner-table mt-0">
+              <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell><b>Upward Factors</b></TableCell>
+                    <TableCell><b>Downward Factors</b></TableCell>
+                    <TableCell><b>Comments on Downward Factors</b></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      <div className="wrap-richtext">
+                        {/* <ThemeProvider theme={myTheme}>
+                          <MUIRichTextEditor label="" onSave={save} />
+                        </ThemeProvider> */}
+                        <RichTextField label="" name="upwardFactors" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="wrap-richtext">
+                        {/* <ThemeProvider theme={myTheme}>
+                          <MUIRichTextEditor label="" onSave={save} />
+                        </ThemeProvider> */}
+                        <RichTextField label="" name="downwardFactors" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="wrap-richtext">
+                        {/* <ThemeProvider theme={myTheme}>
+                          <MUIRichTextEditor label="" onSave={save} />
+                        </ThemeProvider> */}
 
-import { styled } from "@mui/material/styles";
-import TextField from "@mui/material/TextField";
-
-const RedditTextField = styled((props) => (
-  <TextField InputProps={{ disableUnderline: true }} fullWidth {...props} />
-))(({ theme }) => ({
-  "& .MuiFormLabel-root.MuiInputLabel-root": {
-    color: "#A9A9A9",
-  },
-  "& .MuiFilledInput-root": {
-    overflow: "hidden",
-    maxHeight: "52px",
-    backgroundColor: "#FFFFFF",
-    border: "1px solid",
-    borderColor: "#C0C0C0",
-    borderRadius: "0px !important",
-    transition: theme.transitions.create([
-      "border-color",
-      "background-color",
-      "box-shadow",
-    ]),
-    "&:hover": {
-      backgroundColor: "transparent",
-    },
-    "&.MuiInputBase-input": {
-      color: "#3B415B !important",
-    },
-    "&.Mui-focused": {
-      backgroundColor: "transparent",
-      borderColor: "#1377FF",
-    },
-    "&:before": {
-      borderBottom: "none  !important", // Remove bottom border
-    },
-    "&:after": {
-      borderBottom: "none  !important", // Remove bottom border
-    },
-  },
-}));
-
-export default RedditTextField;
+                        <RichTextField label="" name="downFactorsComments" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </Grid>
+        </Grid>

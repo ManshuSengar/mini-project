@@ -170,3 +170,209 @@ const ExecutiveSummery = ({ userData }: any) => {
               }}
             </Formik>
           </div>
+
+
+
+import { FormControl, Grid, IconButton, Table, TableBody, Button, TableCell, TableHead, TableRow, TextField } from "@mui/material"
+import { TextBoxField } from "../../../components/framework/TextBoxField";
+import DeleteIcon from '@mui/icons-material/Delete';
+// import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+// import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+// import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { SyntheticEvent, useEffect, useRef, useState } from "react";
+import MUIRichTextEditor from 'mui-rte';
+import { createTheme, ThemeProvider } from '@mui/material/styles'
+import { Formik, Form } from "formik";
+// import { TextAreaField } from "../../../components/framework/TextAreaAuto";
+import { DatePickerField } from '../../../components/framework/DatePickerField';
+
+import { useAddExternalRatingMutation, useGetExternalRatingByIdQuery } from "../../../features/appraisal/externalRatingApi";
+
+interface Input {
+  id: number
+}
+
+const myTheme = createTheme({
+  // Set up your custom MUI theme here
+})
+
+const ExternalRating = () => {
+
+  const [inputs, setInputs] = useState<Input[]>([
+    {
+      id: 1
+    }
+  ])
+  const [addExternalRating, response] = useAddExternalRatingMutation();
+  const [id, setId] = useState<number>(12345);
+  const { data: executiveData, isLoading, isFetching } = useGetExternalRatingByIdQuery(id);
+  const [errorMessage, setErrorMessage] = useState<any>("");
+
+
+  // const [externalRating, setExternalRating] = useState({
+
+
+  // })
+
+  const initialValues = {
+    agencyName: '',
+    instrument: '',
+    amount: '',
+    ratingDate: null,
+    prevRating: '',
+    prevratingDate: null,
+    precPrevRating: '',
+    precPrevRatingDate: null,
+    externalRatingDesc: '',
+   }
+  // const {ratingDate,prevratingDate,precPrevRatingDate}=initialValues
+
+  const handleAddFields = () => {
+    const newInputs = [...inputs, { id: inputs.length + 1 }]
+    setInputs(newInputs);
+  }
+
+  const handleDeleteFields = () => {
+    if (inputs.length >= 2) {
+      const newInputs = inputs.slice(0, -1);
+      setInputs(newInputs);
+    } else if (inputs.length > 1) {
+      return
+    }
+  }
+
+  const save = (data: any) => {
+    console.log(data);
+  };
+
+  useEffect(() => {
+  }, []);
+
+  const handleSubmit = async (values: any) => {
+    try {
+      console.log("hello1", values);
+      await addExternalRating(values).unwrap();
+    } catch (err) {
+      console.error("Error saving data:", err);
+    }
+  };
+
+  return (
+    <>
+      <div className='custome-form'>
+        <Grid
+          spacing={2}
+          padding={4}
+          container
+          className='form-grid'
+        >
+          <Grid item xs={12} sm={6} md={3} lg={3}>
+            External Credit Rating of Holding Company
+          </Grid>
+          <Grid item xs={12} sm={6} md={3} lg={9}>
+            <TextBoxField label="External Credit Rating of Holding Company" name="" />
+          </Grid>
+        </Grid>
+        <Formik initialValues={initialValues}
+          onSubmit={handleSubmit}
+
+        >
+          {({ values, setFieldValue, handleChange }) => {
+            return (<Form>
+              <div className="wrap-inner-table">
+                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width={120}><b>Name of Rating Agency</b></TableCell>
+                      <TableCell><b>Instrument</b></TableCell>
+                      <TableCell><b>Amount (Rs Cr)</b></TableCell>
+                      <TableCell><b>Rating</b></TableCell>
+                      <TableCell><b>Date of Rating</b></TableCell>
+                      <TableCell><b>Previous Rating</b></TableCell>
+                      <TableCell><b>Date of Previous Rating</b></TableCell>
+                      <TableCell><b>Preceding Previous Rating</b></TableCell>
+                      <TableCell><b>Date of Rating Preceding Previous Rating</b></TableCell>
+                      <TableCell>
+                        <IconButton className="py-0" aria-label="delete"
+                          color="primary" onClick={handleAddFields}>
+                          +
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {inputs.map((input: any) => (
+                      <TableRow>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <TextBoxField label="Name of Rating Agency-Tagged" name="agencyName" />
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <TextBoxField label="Instrument" name="instrument" />
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <TextBoxField label="Amount (Rs Cr)" name="amount" />
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <TextBoxField label="Rating" name="externalRatingDesc" />
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <DatePickerField label="rating date" name="ratingDate" />
+
+                          {/* <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker slotProps={{ textField: { size: 'small' } }} name="ratingDate"  />
+                    </LocalizationProvider> */}
+                        </TableCell>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <TextBoxField label="Previous Rating" name="prevRating" />
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <Grid item xs={12} lg={3}>
+
+                            <DatePickerField label="previous rating date" name="prevratingDate" />
+                          </Grid>
+                          {/* <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker slotProps={{ textField: { size: 'small' } }} name="prevratingDate" />
+                    </LocalizationProvider> */}
+                        </TableCell>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <TextBoxField label="Preceding Previous Rating" name="precPrevRating" />
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <DatePickerField label="prec prev rating date" name="precPrevRatingDate" />
+
+                          {/* <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker slotProps={{ textField: { size: 'small' } }} name="precPrevRatingDate" />
+                    </LocalizationProvider> */}
+                        </TableCell>
+                        <TableCell>
+                          <IconButton aria-label="delete" color="error" onClick={handleDeleteFields}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                        {/* <TableCell>
+                          <Button type="submit" size="small"
+                            className="text-capitalize" variant="contained" color="primary">
+                            Save
+                          </Button>
+                        </TableCell> */}
+                      </TableRow>
+                    ))
+                    }
+                  </TableBody>
+                </Table>
+              </div>
+            </Form>)
+          }}
+        </Formik>

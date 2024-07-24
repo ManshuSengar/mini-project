@@ -1,34 +1,20 @@
+import { Accordion, AccordionDetails, AccordionSummary, Divider, FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell, TableHead, TableRow, TextField, Button } from "@mui/material"
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import React, { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useAddExecutiveSummaryMutation, useGetExecutiveSummaryByIdQuery, useUpdateExecutiveSummaryMutation } from "../../../features/appraisal/executiveSummaryApi";
+import { Formik, Form, useFormikContext } from "formik";
+import { styled } from "@mui/material/styles";
+import { TextAreaField } from "../../../components/framework/TextAreaAuto";
+import { DropDownField } from "../../../components/framework/DropDownField";
+import * as Yup from "yup";
+import { TextBoxField } from "../../../components/framework/TextBoxField"
 import { debounce } from 'lodash';
-const AutoSave = ({ debounceMs = 1000 }) => {
-  const formik = useFormikContext();
-  const [lastSaved, setLastSaved] = useState<any>(null);
-  const debouncedSubmit = useCallback(
-    debounce(async () => {
-      if (formik.isValid && formik.dirty) {
-        try {
-          await formik.submitForm();
-          setLastSaved(new Date());
-        } catch (error) {
-          console.error('Error during autosave:', error);
-        }
-      }
-    }, debounceMs),
-    [formik.submitForm, formik.isValid, formik.dirty]
-  );
-
-  useEffect(() => {
-    debouncedSubmit();
-    return () => {
-      debouncedSubmit.cancel();
-    };
-  }, [formik.values, debouncedSubmit]);
-
-  return lastSaved ? <p>Last autosaved: {lastSaved.toLocaleTimeString()}</p> : null;
-};
+import AutoSave from "../../../components/framework/AutoSave";
 
 
 
-const ExecutiveSummery = () => {
+
+const ExecutiveSummery = ({ userData }: any) => {
   const [expanded, setExpanded] = React.useState('');
   const textRef2 = useRef<any>();
   const textRef1 = useRef<any>();
@@ -42,12 +28,14 @@ const ExecutiveSummery = () => {
 
   const [addExecutiveSummary, response] = useAddExecutiveSummaryMutation();
   const [errorMessage, setErrorMessage] = useState<any>("");
+  const [updateExecutiveSummary, updateResponse] = useUpdateExecutiveSummaryMutation();
 
-  const [id, setId] = useState<number>(12345);
+  const [id, setId] = useState<number>(userData?.id);
   const { data: executiveData, isLoading, isFetching } = useGetExecutiveSummaryByIdQuery(id);
 
   const initialValues = {
-    nbfcName: '',
+    applId: userData?.id || "",
+    nbfcName: "Test User",
     pastAssociation: '',
     briefBackground: '',
     promotor: '',
@@ -61,8 +49,7 @@ const ExecutiveSummery = () => {
 
   const validationSchema = Yup.object().shape({
     nbfcName: Yup.string().required("Name of Borrower is required"),
-    // businessNature: Yup.string().required("Nature of Business is required"),
-
+    // pastAssociation: Yup.string().required("Nature of Business is required"),
   });
 
 
@@ -73,8 +60,15 @@ const ExecutiveSummery = () => {
   };
   const handleSubmit = async (values: any) => {
     try {
-      console.log("hello1");
-      await addExecutiveSummary(values).unwrap();
+      if (!userData?.id) {
+        await addExecutiveSummary(values).unwrap();
+        console.log("updateResponse--> ", response);
+      }
+      else {
+        await updateExecutiveSummary(values).unwrap();
+        console.log("updateResponse--> ", updateResponse);
+      }
+
     } catch (err) {
       console.error("Error saving data:", err);
     }
@@ -87,11 +81,12 @@ const ExecutiveSummery = () => {
         <div className='custome-form'>
           <div className='custome-form'>
             <Formik
-              initialValues={initialValues}
+              initialValues={{ ...executiveData, nbfcName: "Test User" } || initialValues}
               onSubmit={handleSubmit}
               validationSchema={validationSchema}
               validateOnChange={false}
               validateOnBlur={true}
+              enableReinitialize={true}
             >
               {({ values, setFieldValue, handleChange }) => {
                 return (
@@ -163,16 +158,15 @@ const ExecutiveSummery = () => {
                           name="productOffered"
                         />
                       </Grid>
-                      <Grid item xs={12} textAlign="right">
+                      {/* <Grid item xs={12} textAlign="right">
                         <Button type="submit" size="small"
                           className="text-capitalize" variant="contained" color="primary">
                           Save
                         </Button>
-                      </Grid>
+                      </Grid> */}
                     </Grid>
                   </Form>
                 );
               }}
             </Formik>
           </div>
-        </div>

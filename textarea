@@ -200,3 +200,118 @@
             </div>
           </Grid>
         </Grid>
+
+
+import React from 'react';
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import { getIn, useFormikContext } from "formik";
+import MUIRichTextEditor from 'mui-rte';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { convertToRaw, convertFromRaw, EditorState } from 'draft-js';
+
+const theme = createTheme({
+    // You can customize the theme for MUIRichTextEditor here
+});
+
+export const RichTextField = (props: {
+    label: string;
+    name: string;
+}) => {
+    const { setFieldValue, values, touched, errors } = useFormikContext() || {};
+
+    // const handleChange: any = (state: EditorState) => {
+    //     const contentState = state.getCurrentContent();
+    //     const rawContent = convertToRaw(contentState);
+    //     console.log("rawContent--> ", rawContent);
+    //     setFieldValue(props.name, JSON.stringify(state));
+    // };
+
+    const initialValue = React.useMemo(() => {
+        const value = getIn(values, props.name);
+        console.log("valuetext field --> ", value);
+        if (value) {
+            try {
+                const content = JSON.stringify(
+                    convertToRaw(value.getCurrentContent())
+                );
+                setFieldValue(props.name, content);
+            } catch (error) {
+                console.error("Error parsing initial value:", error);
+                return '';
+            }
+        }
+        return '';
+    }, [values, props.name]);
+
+    return (
+        <Grid item xs={12}>
+            <ThemeProvider theme={theme}>
+                <Typography variant="subtitle1" gutterBottom>
+                    {props.label}
+                </Typography>
+                <MUIRichTextEditor
+                    label={`Enter ${props.label.toLowerCase()} here...`}
+                    // onChange={handleChange}
+                    onChange={value => {
+                        const content = JSON.stringify(
+                            convertToRaw(value.getCurrentContent())
+                        );
+                        setFieldValue(props.name, content);
+                    }}
+                    inlineToolbar={true}
+                    // defaultValue={getIn(values, props.name)}
+                     defaultValue={initialValue}
+                    // defaultValue={getIn(values, props.name)}
+                />
+            </ThemeProvider>
+            <Grid item xs={12}>
+                <Typography
+                    color="error"
+                    variant="subtitle2"
+                    gutterBottom
+                    component="span"
+                    className="mybooking_error"
+                >
+                    {getIn(touched, props.name) && getIn(errors, props.name) &&
+                        JSON.stringify(getIn(errors, props.name)).replaceAll('"', "")}
+                </Typography>
+            </Grid>
+        </Grid>
+    );
+};
+
+import { Formik, Form, useFormikContext } from "formik";
+import { debounce } from "lodash";
+import { useCallback, useEffect, useState } from "react";
+
+const AutoSave = ({ debounceMs = 2000 }) => {
+    const formik = useFormikContext();
+    // const [lastSaved, setLastSaved] = useState<any>(null);
+    const debouncedSubmit = useCallback(
+        debounce(async () => {
+            if (formik.isValid && formik.dirty) {
+                try {
+                    await formik.submitForm();
+                    // setLastSaved(new Date());
+                } catch (error) {
+                    console.error('Error during autosave:', error);
+                }
+            } 
+        }, debounceMs),
+        [formik.submitForm, formik.isValid, formik.dirty]
+    );
+
+    useEffect(() => {
+        debouncedSubmit();
+        return () => {
+            debouncedSubmit.cancel();
+        };
+    }, [formik.values, debouncedSubmit]);
+    // return lastSaved ? <p>Last autosaved: {lastSaved.toLocaleTimeString()}</p> : null;
+
+    return <></>;
+};
+
+
+export default AutoSave;

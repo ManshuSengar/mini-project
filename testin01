@@ -1,0 +1,318 @@
+const ExecutiveSummery = ({ userData }: any) => {
+  const [expanded, setExpanded] = React.useState('');
+  const textRef2 = useRef<any>();
+  const textRef1 = useRef<any>();
+  const textRef3 = useRef<any>();
+  const textRef4 = useRef<any>();
+  const textRef5 = useRef<any>();
+  const textRef6 = useRef<any>();
+  const onOpenChange = (panel: any) => (event: React.SyntheticEvent, isExpanded: any) => {
+    setExpanded(isExpanded ? panel : false);
+  };
+
+  const [addExecutiveSummary, response] = useAddExecutiveSummaryMutation();
+  const [errorMessage, setErrorMessage] = useState<any>("");
+  const [updateExecutiveSummary, updateResponse] = useUpdateExecutiveSummaryMutation();
+
+  const [id, setId] = useState<number>(userData?.id);
+  const { data: executiveData, isLoading, isFetching } = useGetExecutiveSummaryByIdQuery(12345);
+
+  const initialValues = {
+    applId:"12345",
+    nbfcName: "Test User",
+    pastAssociation: '',
+    briefBackground: '',
+    promotor: '',
+    extRating: '',
+    ramRatingGrade: '',
+    internalScore: '',
+    productOffered: '',
+    internalRatingScore: ''
+  };
+
+
+  const validationSchema = Yup.object().shape({
+    nbfcName: Yup.string().required("Name of Borrower is required"),
+    // pastAssociation: Yup.string().required("Nature of Business is required"),
+  });
+
+
+  const onChangeHandler = function (e: SyntheticEvent, refName: any) {
+    const target = e.target as HTMLTextAreaElement;
+    refName.current.style.height = "60px";
+    refName.current.style.height = `${target.scrollHeight}px`;
+  };
+  const handleSubmit = async (values: any) => {
+    try {
+      if (!userData?.id) {
+        await addExecutiveSummary(values).unwrap();
+        console.log("updateResponse--> ", response);
+      }
+      else {
+        await updateExecutiveSummary(values).unwrap();
+        console.log("updateResponse--> ", updateResponse);
+      }
+
+    } catch (err) {
+      console.error("Error saving data:", err);
+    }
+  };
+  if (isLoading) return <h6>Loading... </h6>
+
+  return (
+    <>
+      <div className='custome-form'>
+        <div className='custome-form'>
+          <div className='custome-form'>
+            <Formik
+              initialValues={{ ...executiveData, nbfcName: "Test User" } || initialValues}
+              onSubmit={handleSubmit}
+              validationSchema={validationSchema}
+              validateOnChange={false}
+              validateOnBlur={true}
+              // enableReinitialize={true}
+            >
+              {({ values, setFieldValue, handleChange }) => {
+                return (
+                  <Form>
+                    <AutoSave debounceMs={1000} />
+                    <Grid spacing={2} padding={4} container className='form-grid'>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextBoxField
+                          label="Name of the NBFC"
+                          name="nbfcName"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <FormControl fullWidth>
+                          <InputLabel className="select-label" id="eligibility">Past association with SIDBI</InputLabel>
+                          <Select
+                            labelId="eligibility"
+                            id="pastAssociate"
+                            label="Past association with SIDBI"
+                            size="small"
+                            value={values?.pastAssociation}
+                            name="pastAssociation"
+                            onChange={handleChange}
+                          >
+                            <MenuItem value="New to Business">New to Business</MenuItem>
+                            <MenuItem value="Existing to Business">Existing to Business</MenuItem>
+                            <MenuItem value="Past to Business">New to Business</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <TextAreaField
+                          label="Brief background of NBFC/NBFC-MFI"
+                          name="briefBackground"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextAreaField label="Promoter" name="promotor" />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6}>
+                        <TextAreaField label="External rating detail" name="extRating" />
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <Divider className='my-1' textAlign="left">
+                          <b>Internal Rating Details </b>
+                        </Divider>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6} className="pt-0">
+                        <TextBoxField
+                          label="Internal Score"
+                          name="internalRatingScore"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={6} lg={6} className="pt-0">
+                        <TextBoxField
+                          label="RAM Rating Grade"
+                          name="ramRatingGrade"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12}>
+                        <Divider className='my-1' textAlign="left">
+                          <b>Product offered</b>
+                        </Divider>
+                      </Grid>
+                      <Grid item xs={12} sm={12} md={12} lg={12} className="pt-0">
+                        <TextAreaField
+                          label="Product offered"
+                          name="productOffered"
+                        />
+                      </Grid>
+                      {/* <Grid item xs={12} textAlign="right">
+                        <Button type="submit" size="small"
+                          className="text-capitalize" variant="contained" color="primary">
+                          Save
+                        </Button>
+                      </Grid> */}
+                    </Grid>
+                  </Form>
+                );
+              }}
+            </Formik>
+          </div>
+
+
+
+
+  /// facility
+
+       <Grid
+              spacing={2}
+              padding={4}
+              container
+              className='form-grid'
+            >
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Amount of loan proposed" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={8} md={8} lg={8}>
+                <FormControl fullWidth>
+                  <textarea
+                    placeholder="Comment"
+                    ref={textRef6}
+                    className="text-area-box"
+                    onChange={(event: any) => onChangeHandler(event, textRef6)}
+                  />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Scheme" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Total Exposure" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              {/* <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Validity of drawl" size="small" type="text" />
+                </FormControl>
+              </Grid> */}
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Tenure" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Moratorium" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Repayment frequency" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Repayment frequency" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <InputLabel className="select-label" id="eligibility">Interest rate Type</InputLabel>
+                  <Select
+                    labelId="eligibility"
+                    id="eligibility"
+                    size="small"
+                    value=""
+                    name="eligibility"
+                  >
+                    <MenuItem value="Fixed">Fixed</MenuItem>
+                    <MenuItem value="Floating">Floating</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <InputLabel className="select-label" id="eligibility">Benchmark</InputLabel>
+                  <Select
+                    labelId="eligibility"
+                    id="eligibility"
+                    size="small"
+                    value=""
+                    name="eligibility"
+                  >
+                    <MenuItem value="1 Year MCLR">1 Year MCLR</MenuItem>
+                    <MenuItem value="PLR">PLR</MenuItem>
+                    <MenuItem value="Repo">Repo</MenuItem>
+                  </Select>
+                  <span className="water-mark">Benchmark rate (7.5 %)</span>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Spread" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Interest rate" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              {/* <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Interest reset" size="small" type="text" />
+                </FormControl>
+              </Grid> */}
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Security" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="ACR" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Any PG/ CG/ FD" size="small" type="text" />
+                </FormControl>
+              </Grid>
+              {/* <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <TextField label="Assets to be refinanced" size="small" type="text" />
+                </FormControl>
+              </Grid> */}
+              <Grid item xs={12} sm={12} md={12} lg={12}>
+                <FormControl fullWidth>
+                  <textarea
+                    placeholder="Remarks"
+                    ref={textRef3}
+                    className="text-area-box"
+                    onChange={(event: any) => onChangeHandler(event, textRef3)}
+                  />
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <FormControl fullWidth>
+                  <FormControl fullWidth>
+                    <InputLabel className="select-label" id="eligibility">Delegation of Power-IFCC-DMD</InputLabel>
+                    <Select
+                      labelId="eligibility"
+                      id="eligibility"
+                      size="small"
+                      value=""
+                      name="eligibility"
+                    >
+                      <MenuItem value="CCIC-CGM">CCIC-CGM</MenuItem>
+                      <MenuItem value="IFCC-DMD">IFCC-DMD</MenuItem>
+                      <MenuItem value="EC">EC</MenuItem>
+                    </Select>
+                  </FormControl>
+                </FormControl>
+              </Grid>
+            </Grid>
+
+
+
+

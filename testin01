@@ -313,6 +313,18 @@ const ExecutiveSummery = ({ userData }: any) => {
               </Grid>
             </Grid>
 
-
+{
+  "applId": "string",
+  "loanAmtProposed": "string",
+  "comment": "string",
+  "scheme": "string",
+  "totalExposure": "string",
+  "tenure": "string",
+  "moratorium": "string",
+  "repaymentFrequency": "string",
+  "interestRateType": "string",
+  "benchmark": "string",
+  "spread": "string"
+}
 
 

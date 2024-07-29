@@ -1,0 +1,356 @@
+import React from 'react';
+import { Formik, Form } from 'formik';
+import * as Yup from 'yup';
+import { Table, TableBody, TableCell, TableHead, TableRow, Button, Grid } from '@mui/material';
+import { TextBoxField } from '../../../components/framework/TextBoxField'; // Adjust the import path as needed
+import { useAddCompliancePositionMutation, useUpdateCompliancePositionMutation, useGetCompliancePositionByIdQuery } from '../../../features/due-diligence/compliancePositionApi'; // Adjust the import path as needed
+import AutoSave from '../../../components/framework/AutoSave'; // Adjust the import path as needed
+
+const CompliancePosition = ({ userData }: any) => {
+  const [addCompliancePosition, addResponse] = useAddCompliancePositionMutation();
+  const [updateCompliancePosition, updateResponse] = useUpdateCompliancePositionMutation();
+  const { data: complianceData, isLoading } = useGetCompliancePositionByIdQuery(12345); // Replace with actual ID
+
+  const initialValues = {
+    applId: "12345",
+    fcmaFcraGuide: "",
+    rbiGuideline: "",
+    sebiGuideline: "",
+    pcaFramework: "",
+    gstFilling: "",
+    saveStatus: "" // You can adjust this as needed
+  };
+
+  const validationSchema = Yup.object().shape({
+    fcmaFcraGuide: Yup.string().required("This field is required"),
+    rbiGuideline: Yup.string().required("This field is required"),
+    sebiGuideline: Yup.string().required("This field is required"),
+    pcaFramework: Yup.string().required("This field is required"),
+    gstFilling: Yup.string().required("This field is required"),
+  });
+
+  const handleSubmit = async (values: any) => {
+    try {
+      await updateCompliancePosition(values).unwrap();
+    }
+    catch (err) {
+      console.error("Error saving compliance position:", err);
+    }
+  };
+
+  if (isLoading) return <h6>Loading... </h6>;
+
+  return (
+    <div className="wrap-inner-table custome-form">
+      <Formik
+        initialValues={complianceData || initialValues}
+        onSubmit={handleSubmit}
+        validationSchema={validationSchema}
+        validateOnChange={false}
+        validateOnBlur={true}
+      >
+        {({ values }) => (
+          <Form>
+            <AutoSave debounceMs={2000} />
+            <Table sx={{ minWidth: 650 }} aria-label="simple table">
+              <TableHead>
+                <TableRow>
+                  <TableCell><b>Compliance</b></TableCell>
+                  <TableCell><b>Comments</b></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>
+                    FEMA / FCRA guidelines, as applicable, in case of foreign investment / funding / grants
+                  </TableCell>
+                  <TableCell>
+                    <TextBoxField
+                      name="fcmaFcraGuide"
+                      label=""
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    All applicable RBI guidelines
+                  </TableCell>
+                  <TableCell>
+                    <TextBoxField
+                      name="rbiGuideline"
+                      label=""
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    All applicable SEBI guidelines
+                  </TableCell>
+                  <TableCell>
+                    <TextBoxField
+                      name="sebiGuideline"
+                      label=""
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    PCA framework
+                  </TableCell>
+                  <TableCell>
+                    <TextBoxField
+                      name="pcaFramework"
+                      label=""
+                    />
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    GST filing
+                  </TableCell>
+                  <TableCell>
+                    <TextBoxField
+                      name="gstFilling"
+                      label=""
+                    />
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </Form>
+        )}
+      </Formik>
+    </div>
+  );
+};
+
+export default CompliancePosition;
+
+import { createApi } from "@reduxjs/toolkit/query/react";
+import { crudApiTemplate, customBaseQuery } from "../../app/commonApi";
+
+const entity = "appr/compliance";
+const path = `compliancePositionApi`;
+const tags = [entity];
+
+export const compliancePositionApi = createApi({
+    reducerPath: path,
+    baseQuery: customBaseQuery,
+    tagTypes: tags,
+    endpoints: (builder) => ({
+        addCompliancePosition: builder.mutation<any, any>({
+            query: (body) => crudApiTemplate(entity).addItem(body),
+            invalidatesTags: tags,
+        }),
+        getCompliancePositionById: builder.query<any, number>({
+            query: (id) => crudApiTemplate(entity).getItem(12345),
+            providesTags: tags,
+        }),
+        updateCompliancePosition: builder.mutation<any, any>({
+            query: (body) => crudApiTemplate(entity).updateItem(body),
+            invalidatesTags: tags,
+        }),
+    }),
+
+});
+
+export const {
+    useAddCompliancePositionMutation, useUpdateCompliancePositionMutation, useGetCompliancePositionByIdQuery
+} = compliancePositionApi
+
+
+import { FormControl, Grid, InputLabel, MenuItem, Select, Table, TableBody, TableCell,FormControlLabel, TableHead, TableRow, TextField ,Radio,RadioGroup} from "@mui/material";
+import { SyntheticEvent,useState, useEffect, useRef } from "react";
+
+const CompExposure = () => {
+  const textRef1 = useRef<any>();
+  const [value, setValue] = useState('no');
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setValue((event.target as HTMLInputElement).value);
+  };
+  const onChangeHandler = function (e: SyntheticEvent, refName: any) {
+    const target = e.target as HTMLTextAreaElement;
+    refName.current.style.height = "60px";
+    refName.current.style.height = `${target.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    // textRef1.current.style.height = "60px";
+  }, []);
+
+  return (
+    <>
+      <div className="wrap-accordian custome-form">
+        <div className='custome-form'>
+          <div className="wrap-inner-table">
+            <Table sx={{ minWidth: 650 }} aria-label="simple table">
+              <TableHead>
+                <TableRow>
+                  <TableCell><b>Compliance</b></TableCell>
+                  <TableCell sx={{ minWidth: 550 }}><b>Comments</b></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  <TableCell>
+                    KYC risk categorisation
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    KYC of Company
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    KYC of Directors
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    KYC of Beneficial Owner
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    Compliance with Scheme eligibility criteria
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    Relaxations in Scheme eligibility criteria, if any
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    Compliance of proposal with exposure norms of SIDBI
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    Connected Lending applicability
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    Key people on other FI’s Board
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>
+                    Delegation of Powers
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth>
+                      <TextField size="small" type="text" />
+                    </FormControl>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+
+          </div>
+        </div>
+        <Grid
+          spacing={2}
+          padding={4}
+          container
+          className='form-grid'
+        >
+
+          <Grid item xs={12} sm={6} md={3} lg={3}>
+            Connected Lending should be -
+          </Grid>
+          <RadioGroup
+        aria-labelledby="demo-controlled-radio-buttons-group"
+        name="controlled-radio-buttons-group"
+        value={value}
+        onChange={handleChange}
+      >
+         <FormControlLabel value="no" control={<Radio />} label="No" className="frmLbl"/>
+        <FormControlLabel value="yes" control={<Radio />} label="Yes" className="frmLbl" />
+        </RadioGroup>
+       { value==="yes"?
+        
+        (<Grid item xs={12} sm={6} md={3} lg={8}>
+            <FormControl fullWidth>
+              <textarea
+                placeholder="Connected Lending"
+                ref={textRef1}
+                className="text-area-box"
+                onChange={(event: any) => onChangeHandler(event, textRef1)}
+              />
+            </FormControl>
+          </Grid>)
+:<></>
+         } 
+
+        </Grid>
+      </div>
+    </>
+  )
+}
+
+export default CompExposure;
+
+request body {
+  "applId": "12345",
+  "kycRiskCatg": "string",
+  "companyKyc": "string",
+  "companyDirector": "string",
+  "beneficialKyc": "string",
+  "schemaEligCriteria": "string",
+  "schemaEligRelaxation": "string",
+  "exposureNorms": "string",
+  "connectedLendingAppl": "string",
+  "keyPeopleOther": "string",
+  "delegationPower": "string",
+  "connectedLendingComm": "string",
+  "saveStatus": "string"
+}

@@ -261,6 +261,17 @@ const QuantumAssistance = () => {
 
 export default QuantumAssistance;
 
+[
+  {
+    "applId": "12345",
+    "slNo": 0,
+    "particulars": "string",
+    "amount": 0,
+    "comments": "string",
+    "saveStatus": "string"
+  }
+] Api Save body
+
 import { createApi } from "@reduxjs/toolkit/query/react";
 import { crudApiTemplate, customBaseQuery } from "../../app/commonApi";
 

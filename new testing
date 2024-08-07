@@ -1,0 +1,406 @@
+import { Accordion, AccordionDetails, AccordionSummary, FormControl, Table, TableBody, TableCell, TableHead, TableRow, TextField, MenuItem } from "@mui/material";
+import React, { SyntheticEvent, useEffect, useRef, useState } from "react";
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { useGetMaterQuery } from "../../../features/master/api";
+
+const RiskTolerance = () => {
+  const [expanded, setExpanded] = React.useState('');
+  const [lessThan] = useState("<");
+  const [greaterThan] = useState(">");
+
+
+
+  const onOpenChange = (panel: any) => (event: React.SyntheticEvent, isExpanded: any) => {
+    setExpanded(isExpanded ? panel : false);
+  };
+  const [active, setactive] = useState('A');
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setactive((event.target as HTMLInputElement).value);
+  };
+
+  const onChangeHandler = function (e: SyntheticEvent, refName: any) {
+    const target = e.target as HTMLTextAreaElement;
+    refName.current.style.height = "60px";
+    refName.current.style.height = `${target.scrollHeight}px`;
+  };
+
+
+
+  const {
+    data: masterData,
+    isLoading,
+    error: getQueryError,
+  } = useGetMaterQuery(`mstr/getMFiAumDtls?aumTy=${active}`);
+  useEffect(() => {
+    console.log("testing-->89 ", masterData);
+  })
+
+  return (
+    <>
+      <TextField className="lblCntrl"
+        variant="outlined"
+        name="Risk tolerance framework for MFI"
+        id="standard-basic"
+        select
+        // placeholder="KYC"
+        label="Risk tolerance framework for MFI"
+        fullWidth
+        onChange={handleChange}
+      >
+        <MenuItem key={''} value={''}>
+          Select NBFC-MFI Range
+        </MenuItem>
+        {[
+          { value: 'A', name: ' NBFC-MFIs with AUM Below Rs 500 Cr' },
+          { value: 'B', name: ' NBFC-MFIs with AUM from Rs 500 Cr to Rs. 1000 Cr' },
+          { value: 'C', name: ' NBFC-MFIs with AUM Above Rs 1000 Cr' }
+        ].map((option) => (
+          <MenuItem key={option.value} value={option.value}>
+            {option.name}
+          </MenuItem>
+        ))}
+      </TextField>
+      <div>
+        <h4 style={{ textAlign: "center", marginTop: "1rem" }}>NBFC-MFIs with AUM Below Rs 500 Cr</h4>
+        <div className="wrap-inner-table">
+          <Table sx={{ minWidth: 650 }} aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell><b>(GNPA + Write off*)/
+                  (Gross outstanding +
+                  Write off*) </b></TableCell>
+                <TableCell><b>Bank's exposure as a
+                  % of outstanding
+                  Borrowings of NBFCMFI as per last
+                  audited FY</b></TableCell>
+                <TableCell sx={{ minWidth: 200 }}><b>Compliance</b></TableCell>
+                <TableCell sx={{ minWidth: 300 }}><b>Remarks</b></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              <TableRow>
+                <TableCell>
+                  {lessThan}=3%
+                </TableCell>
+                <TableCell>
+                  40%
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextField size="small" type="text" />
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <textarea
+                      placeholder="Remark"
+                      ref={textRef3}
+                      className="text-area-box"
+                      onChange={(event: any) => onChangeHandler(event, textRef3)}
+                    />
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  {greaterThan} 3 % to {lessThan}= 5%
+                </TableCell>
+                <TableCell>
+                  30%
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextField size="small" type="text" />
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <textarea
+                      placeholder="Remark"
+                      ref={textRef4}
+                      className="text-area-box"
+                      onChange={(event: any) => onChangeHandler(event, textRef4)}
+                    />
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  {greaterThan} 5 % to {lessThan}= 7%
+                </TableCell>
+                <TableCell>
+                  25%
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextField size="small" type="text" />
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <textarea
+                      placeholder="Remark"
+                      ref={textRef5}
+                      className="text-area-box"
+                      onChange={(event: any) => onChangeHandler(event, textRef5)}
+                    />
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  {greaterThan} 7 % to {lessThan}= 9%
+                </TableCell>
+                <TableCell>
+                  20%
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <TextField size="small" type="text" />
+                  </FormControl>
+                </TableCell>
+                <TableCell>
+                  <FormControl fullWidth>
+                    <textarea
+                      placeholder="Remark"
+                      ref={textRef6}
+                      className="text-area-box"
+                      onChange={(event: any) => onChangeHandler(event, textRef6)}
+                    />
+                  </FormControl>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div> 
+    </>
+  )
+}
+
+export default RiskTolerance;
+
+master data 
+{
+  "data": [
+    {
+      "slNo": "1",
+      "mfiAumRange": "Below Rs 500 Cr",
+      "gnpaWriteoffRange": "<=3%",
+      "bankExp": "40%",
+      "aumFlg": null
+    },
+    {
+      "slNo": "2",
+      "mfiAumRange": "Below Rs 500 Cr",
+      "gnpaWriteoffRange": ">3% to <=5%",
+      "bankExp": "30%",
+      "aumFlg": null
+    },
+    {
+      "slNo": "3",
+      "mfiAumRange": "Below Rs 500 Cr",
+      "gnpaWriteoffRange": ">5% to <=7%",
+      "bankExp": "25%",
+      "aumFlg": null
+    },
+    {
+      "slNo": "4",
+      "mfiAumRange": "Below Rs 500 Cr",
+      "gnpaWriteoffRange": ">7% to <=9%",
+      "bankExp": "20%",
+      "aumFlg": null
+    }
+  ],
+  "message": "Success",
+  "status": 200
+}
+
+Request Body For save
+[
+  {
+    "slNo": 0,
+    "applId": "string",
+    "mfiAumRange": "string",
+    "gnpaWriteOffRange": "string",
+    "bankExposure": 0,
+    "compliance": "string",
+    "remarks": "string",
+    "saveStatus": "string"
+  }
+]
+
+import React from 'react';
+import { Formik, Form, FieldArray } from 'formik';
+import * as Yup from 'yup';
+import { Table, TableBody, TableCell, TableHead, TableRow, FormControl, Button, Grid } from '@mui/material';
+import { useAddDiscussionLendersMutation, useUpdateDiscussionLendersMutation, useGetDiscussionLendersByIdQuery } from '../../../features/due-diligence/discussionLendersApi';
+import AutoSave from '../../../components/framework/AutoSave'; // Adjust the import path as needed
+import { TextBoxField } from '../../../components/framework/TextBoxField';
+
+const DiscussionLenders = ({ userData }: any) => {
+  const [addDiscussionLenders, addResponse] = useAddDiscussionLendersMutation();
+  const [updateDiscussionLenders, updateResponse] = useUpdateDiscussionLendersMutation();
+  const { data: discussionLendersData, isLoading, isError } = useGetDiscussionLendersByIdQuery(12345); // Replace with actual ID
+
+  const initialValues = {
+    lenders: [
+      {
+        applId: "12345",
+        slNo: 1,
+        lenderName: "",
+        exposure: "",
+        acctStatus: "",
+        overallConduct: "",
+        name: "",
+        desg: "",
+        mobile: "",
+      },
+      {
+        applId: "12345",
+        slNo: 2,
+        lenderName: "",
+        exposure: "",
+        acctStatus: "",
+        overallConduct: "",
+        name: "",
+        desg: "",
+        mobile: "",
+      },
+      {
+        applId: "12345",
+        slNo: 3,
+        lenderName: "",
+        exposure: "",
+        acctStatus: "",
+        overallConduct: "",
+        name: "",
+        desg: "",
+        mobile: "",
+      }
+    ],
+  };
+
+  const validationSchema = Yup.object().shape({
+    lenders: Yup.array().of(
+      Yup.object().shape({
+        lenderName: Yup.string().required("Lender name is required"),
+        exposure: Yup.string().required("Exposure is required"),
+        acctStatus: Yup.string().required("Account status is required"),
+        overallConduct: Yup.string().required("Overall conduct is required"),
+        name: Yup.string().required("Name is required"),
+        desg: Yup.string().required("Designation is required"),
+        mobile: Yup.string().required("Mobile is required"),
+      })
+    )
+  });
+
+  const handleSubmit = async (values: any) => {
+    try {
+      await updateDiscussionLenders(values.lenders).unwrap();
+    } catch (err) {
+      console.error("Error saving discussion lenders:", err);
+    }
+  };
+
+  if (isLoading) return <h6>Loading... </h6>;
+  return (
+    <div className="wrap-accordian custome-form">
+      <Formik
+        initialValues={discussionLendersData && discussionLendersData?.lenders && discussionLendersData?.lenders.length > 0 ? discussionLendersData : initialValues}
+        onSubmit={handleSubmit}
+        validationSchema={validationSchema}
+        validateOnChange={false}
+        validateOnBlur={true}
+      >
+        {({ values }) => (
+          <Form>
+            <AutoSave debounceMs={2000} />
+            <FieldArray name="lenders">
+              {() => (
+                <div className="wrap-inner-table">
+                  <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><b>Particulars</b></TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField
+                              name={`lenders.${index}.lenderName`}
+                              label={`Bank${index + 1}`}
+                            />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>Exposure (` crore) / Lender Position</TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField name={`lenders.${index}.exposure`} label='' />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Account status</TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField name={`lenders.${index}.acctStatus`} label='' />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Overall Conduct of Account</TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField name={`lenders.${index}.overallConduct`} label='' />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      <TableRow>
+                        <TableCell colSpan={4}>
+                          <b className="text-center">Contact details </b>
+                        </TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Name:</TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField name={`lenders.${index}.name`} label='' />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Designations:</TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField name={`lenders.${index}.desg`} label='' />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      <TableRow>
+                        <TableCell>Contact detail:</TableCell>
+                        {values?.lenders?.map((lender: any, index: number) => (
+                          <TableCell key={index}>
+                            <TextBoxField name={`lenders.${index}.mobile`} label='' />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </FieldArray>
+          </Form>
+        )}
+      </Formik>
+    </div>
+  );
+};
+
+export default DiscussionLenders;
+
+
+
